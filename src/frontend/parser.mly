@@ -39,7 +39,7 @@
 %nonassoc DOT
 %nonassoc BOOL_LIT IDENT LPAREN
 
-%start <(x * static) list * ((p*e)*Prelude.loc) list> pi /* ajouter les globals */
+%start <(x * static) list * ((p*e)*Prelude.loc) list> pi
 %start <((p*e)*Prelude.loc) option> decl_opt
 %start <e> exp_eof
 

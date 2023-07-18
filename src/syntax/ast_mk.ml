@@ -1,12 +1,14 @@
 open Ast
 open Typing
 
-let main_symbol = ref "main"
+let main_symbol = ref "main" (* default entry point (a function name) *)
 
-
+(** [mk_fun p e] constructs expression (fun p -> e) *)
 let mk_fun p e =
   E_fun(p,e)
 
+
+(** constructs expression (fun p -> e) *)
 let mk_fun_ty_annot p ty_f_opt e =
   match ty_f_opt with
   | None -> mk_fun p e
@@ -29,7 +31,7 @@ let mk_let_fun ~loc ~p_ty_opt ~ty_opt_ret e =
   |> mk_loc loc
 
 
-(*  [enforce_node p (fun x -> e)] add a type contraint
+(*  [enforce_node p (fun x -> e)] adds a type contraint
      to the binding {p |-> (fun x -> e)} enforcing (fun x -> e)
      to be instantaneous. *)
 let enforce_node (p,e) =
@@ -40,7 +42,7 @@ let enforce_node (p,e) =
 let fresh_node () =
   fun_ty (unknown()) (T_size 0) (unknown())
 
-let rec mk_fix f e loc =
+let rec mk_fix (f:x) (e:e) loc : e =
   match e with
     | E_fun(x,e1) ->
         E_fix(f,(x,e1))
@@ -50,8 +52,6 @@ let rec mk_fix f e loc =
         E_app(E_const(Op(TyConstr t)),mk_fix f e1 loc)
     | _ -> Prelude.Errors.syntax_error ~msg:"recursive expression should be a function" loc
 
-let mk_letrec f e1 e2 loc_fun =
+let mk_letrec (f:x) (e1:e) (e2:e) loc_fun : e =
   let e1' = mk_fix f e1 loc_fun in
   E_letIn(P_var f,e1',e2)
-
-

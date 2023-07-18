@@ -117,13 +117,12 @@ let rec to_s ~statics ~tail x ks e =
   let return_atom a = 
     seq_ (S_set(Immediate,x,to_a e)) ks 
   in
-  
   if combinatorial e then SMap.empty,return_atom e else
   match e with
   | E_deco _ ->
       Ast_undecorated.still_decorated e
   | E_fun _ | E_fix _ ->
-   assert false  (* already globalized *)
+      assert false  (* already globalized *)
   | E_const _ | E_var _ | E_tuple _ -> assert false (* already handled *)
   | E_app(E_var f,a) ->
       if tail then SMap.empty, S_continue(f,to_a a,None) else

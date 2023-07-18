@@ -2,7 +2,7 @@ open Ast
 open Ast_subst
 
 
-(** compile pattern matching from an ANF expression       (* en fait, non, pas ANF après propagation *)
+(** compile pattern matching from an ANF expression       (* TODO: in fact no: it is not in ANF form after propagation *)
     to an equivalent ANF expression.
 
    e.g. an expression of the form [let (x,y) = e in e']
@@ -11,34 +11,33 @@ open Ast_subst
            let x = fst z in
            let y = snd z in e''] where z is fresh.
 
-
-
-  After this transformation, source programs are as follow:
+  After this transformation, source programs are as follows:
 
   ;; expression
-  e ::= c
-      | px
-      | fun x -> e
-      | fix (fun x -> e)
-      | x px
+  e ::= 
+        xc
+      | fun x -> e                   ;; <-- no pattern [p] any more
+      | fix f (fun x -> e)           ;; <-- no pattern [p] any more
+      | xc xc
       | (px,px ... px)
-      | if a then e else e
-
-      | let x = e in e                ;; <-- no pattern p any more
-      | register px (fun x -> e) a x
-      | px fby e
-      | exec ~default:px e x
-      | e where p = e
-
-  ;; projection
-  px ::= x        ;; variable
-       | px[i]    ;; tuple projection
+      | if xc then e else e
+      | let x = e in e               ;; <-- no pattern [p] any more
+      | reg x last xc
+      | (exec e xc)^id
+      | var x = e in e
+      | x <- xs
+      | (step e)^k
+      | x[xc]
+      | x.length
+      | x[xc] <- xc
 
   This corresponds to ANF-form with let bindings of the form [let x = e in e]
   rather than [let p = e in e].
 
 *)
 
+(* custom heuristic to check if an expression can be propagated.
+   not to be confused with [Combinatorial.combinatorial] *)
 let rec combinatorial = function
 | E_deco (e,_) -> combinatorial e
 | E_var _ -> true
@@ -50,7 +49,7 @@ let rec combinatorial = function
 | E_app(E_const(Op op),e2) ->
     Combinatorial.op_combinatorial op && combinatorial e2
 | E_app(e1,e2) ->
-    false (* combinatorial e1 && combinatorial e2 *)
+    false
 | E_tuple es ->
     List.for_all combinatorial es
 | E_letIn _ | E_fun _ | E_fix _ ->
@@ -88,11 +87,6 @@ let projection e i size =
 (** [matching e] translate an ANF expression [e] in an ANF expression where all
    let-bindings are of the form [let x = e1 in e2]. *)
 let rec matching e =
-  (* (fun e ->
-     match e with
-     | E_app(E_const (Op (GetTuple {pos=i;arity=n})),e) ->
-       projection e i n
-     | _ -> e) @@*)
   match e with
   | E_deco _ ->
       Ast_undecorated.still_decorated e
@@ -145,7 +139,7 @@ let rec matching e =
       e
   | E_static_array_set(x,e1,e2) ->
       E_static_array_set(x,matching e1,matching e2)
-  | E_step _ | E_par _ -> e (* do not transform sub-expressions under step and // *)
+  | E_step _ | E_par _ -> e (* do not transform sub-expressions under step and // constructs *)
   | E_reg _ | E_exec _ ->
        assert false (* already expanded *)
 

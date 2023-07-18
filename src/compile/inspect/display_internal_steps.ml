@@ -25,11 +25,6 @@ let set_print_mode s =
   let pm = string_of_print_mode s in
   print_mode := pm
 
-let display a (ds,e) =
-  if a <> !print_mode then () else
-  let open Format in
-  fprintf std_formatter "@[<v>{debug mode}===========@,@.%a@]" Ast_pprint.pp_prog (ds,e)
-
 let display_pi a pi =
   if a <> !print_mode then () else
   let open Format in

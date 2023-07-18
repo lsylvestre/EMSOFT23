@@ -1,48 +1,60 @@
 open Ast
 open Ast_subst
 open Combinatorial
-
+open Pattern
 
 (**
 
-  The language in its ANF form is defined as follow:
+  expression in ANF-form are defined as follows:
 
-  ;; expression
-  e ::= xc
+  e ::= 
+        xc
       | fun x -> e
-      | fix (fun x -> e)
-      | xc(xc)
+      | fix f (fun x -> e)
+      | xc xc
       | if xc then e else e
       | let p = e in e
       | reg x last xc
       | (exec e xc)^id
+      | var x = e in e
+      | x <- xs
+      | (step e)^k
+      | x[xc]
+      | x.length
+      | x[xc] <- xc
 
-xc := (xc,xc ... xc)
-    | c
-    | x
-
+  xc := (xc,xc ... xc)
+      | c
+      | x
 *)
 
-let rec is_xc e =
+let rec is_xc (e:e) : bool =
   match un_deco e with
   | E_deco(e,_) -> is_xc e
   | E_var _ | E_const _ -> true
   | E_tuple(es) -> List.for_all is_xc es
   | _ -> false
 
-let plug e context =
+(** [plug e ctx] plugs expression [e] into context [ctx], i.e., returns
+   [ctx e] if [is_xc e] is true, otherwise [let y = e in ctx y] 
+   with [y] a fresh name. *)
+let plug (e:e) (context: e -> e) : e =
   if is_xc e then context e else
-  let x = gensym ~prefix:"anf" () in
+  let x = gensym () in
   E_letIn(P_var x,e,context (E_var x))
 
-let rec plug_n_aux aas es context =
-  match es with
-  | [] -> context (List.rev aas)
-  | e::es' -> plug e @@ fun v -> plug_n_aux (v::aas) es' context
+(** [plug_n es ctx] plugs expresions [es] into context [ctx] 
+    from left to right *)
+let plug_n (es:e list) (context : e list -> e) : e = 
+  let rec plug_n_aux aas es context =
+    match es with
+    | [] -> context (List.rev aas)
+    | e::es' -> plug e @@ fun v -> plug_n_aux (v::aas) es' context
+  in
+  plug_n_aux [] es context
 
-let plug_n es context = plug_n_aux [] es context
-
-let rec anf e =
+(** [anf e] puts expression [e] in ANF-form *)
+let rec anf (e:e) : e =
   match e with
   | E_deco _ ->
       Ast_undecorated.still_decorated e
@@ -92,7 +104,9 @@ let rec anf e =
   | E_par(e1,e2) ->
       E_par(anf e1, anf e2)
 
-let rec in_anf e : bool =
+
+(** [in_anf e] check if expression [e] is in ANF-form *)
+let rec in_anf (e:e) : bool =
   match e with
   | E_deco(e1,_) ->
       in_anf e1
@@ -126,8 +140,12 @@ let rec in_anf e : bool =
   | E_par(e1,e2) ->
       in_anf e1 && in_anf e2
 
-let anf_pi pi =
+
+(** [anf e] puts program [pi] in ANF-form *)
+let anf_pi (pi:pi) : pi =
   Map_pi.map anf pi
 
-let in_anf_pi pi =
+
+(** [in_anf_pi pi] check if program [pi] is in ANF-form *)
+let in_anf_pi (pi:pi) : bool =
   Map_pi.for_all in_anf pi

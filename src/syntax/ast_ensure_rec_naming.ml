@@ -1,12 +1,13 @@
 open Ast
 open Ast_subst
 
-(* given an AST, ensures that definition of tail-recursive functions are of the form [let f = fix f (fun x -> e) in e1] *)
+(* given an AST, ensures that definition of tail-recursive functions
+   are of the form [let f = fix f (fun x -> e) in e1] *)
 
-let rec foo f (e:e) : e =
+let rec rename f (e:e) : e =
   match e with
-  | E_deco(e,d) -> E_deco(foo f e,d)
-  | E_app(E_const(Op(TyConstr ty)),e) -> E_app(E_const(Op(TyConstr ty)),foo f e)
+  | E_deco(e,d) -> E_deco(rename f e,d)
+  | E_app(E_const(Op(TyConstr ty)),e) -> E_app(E_const(Op(TyConstr ty)),rename f e)
   | E_fix(g,(p,e)) -> E_fix(f,(p,subst_e g (E_var f) e))
   | e -> e
 
@@ -32,14 +33,13 @@ let rec ensure_rec_naming_e e =
   | E_tuple(es) ->
       E_tuple(List.map ss es)
   | E_letIn(p,e1,e2) ->
-      (match un_TyConstr e1,p with
-      | E_fix _,P_var f -> E_letIn(P_var f,foo f (ss e1),ss e2)
+      (match un_annot e1,p with
+      | E_fix _,P_var f -> E_letIn(P_var f,rename f (ss e1),ss e2)
       | _ -> E_letIn(p,ss e1,ss e2))
   | E_if(e1,e2,e3) ->
       E_if(ss e1, ss e2, ss e3)
   | E_lastIn(x,e1,e2) ->
-      let y = gensym () in
-      E_lastIn(y,ss e1,ss e2)
+      E_lastIn(x,ss e1,ss e2)
   | E_set(x,e1) ->
       E_set(x,ss e1)
   | E_static_array_get(x,e1) ->

@@ -20,6 +20,7 @@ MENHIR=menhir --unused-tokens --unused-precedence-levels --infer --ocamlc "$(CAM
 
 OBJS= src/prelude.cmo \
       src/syntax/ast.cmo \
+      src/syntax/pattern.cmo \
       src/syntax/ast_pprint.cmo \
       src/syntax/ast_subst.cmo \
       src/syntax/ast_rename.cmo \

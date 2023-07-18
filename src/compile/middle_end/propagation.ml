@@ -61,8 +61,14 @@ let rec prop_n e =
   let e' = prop e in
   if !nb_modif > 0 then prop_n e' else e'
 
-let propagation (ds,e) =
-  List.map (fun (x,e) -> x,prop_n e) ds, prop_n e
+let rec toplevel_constant_folding ds e =
+  match ds with
+  | [] -> e
+  | (x,(E_const _| E_var _ as ec))::ds' -> toplevel_constant_folding ds' (subst_e x ec e)
+  | _::ds' -> toplevel_constant_folding ds' e
+
+let propagation ds e =
+  prop_n (toplevel_constant_folding ds e)
 
 let propagation_pi pi =
-  Map_pi.map prop_n pi
+  Map_pi.map (propagation pi.ds) pi

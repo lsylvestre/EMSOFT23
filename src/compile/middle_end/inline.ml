@@ -1,4 +1,5 @@
 open Ast
+open Pattern
 open Ast_subst
 
 (* inline a program given in ANF, lambda-lifted form. The resulting program is
@@ -61,7 +62,7 @@ let rec inl (ds,e) =
     | [] ->
        List.rev_map (fun (x,e) -> x,simplify e) recd_and_globals, simplify e
     | (x,(E_fix(f,(p,ef))))::fs' ->
-        assert (not (Ast.pat_mem f p));
+        assert (not (pat_mem f p));
         aux ((x,E_fix(x,(p,subst_e f (E_var x) ef)))::recd_and_globals) fs' e
     | (x,(E_fun _ as ex))::ds' -> (* super-static environment *)
        let ss e = (subst_e x ex e) in

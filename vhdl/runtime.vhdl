@@ -25,6 +25,7 @@ package runtime is
     function to_string (a: std_logic_vector) return string;
     function integer_of_value(arg: value) return integer; 
     function mixc_compute_address(caml_heap_base:value;a:value) return value;
+    procedure default_zero (xvar: out value);
 end package;
 
 package body runtime is
@@ -223,5 +224,12 @@ package body runtime is
       begin
         return value(signed(caml_heap_base) + signed(a(0 to 31)) + (signed(a(32 to 63)) * 4));
       end function;
+
+    procedure default_zero (xvar: out value) is
+    begin
+      for i in 0 to xvar'length - 1 loop
+        xvar(0) := '0';
+      end loop;
+    end procedure;
 
 end runtime;

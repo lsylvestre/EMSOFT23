@@ -1,5 +1,5 @@
 open Ast
-
+open Pattern
 
 (* value propagation, including inlining and constant/copy propagation *)
 

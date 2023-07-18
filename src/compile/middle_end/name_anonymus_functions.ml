@@ -40,15 +40,14 @@ let rec name e =
   | E_par(e1,e2) ->
       E_par(name e1, name e2)
 
-let name_fun (e:e) : e =
+let name_top (e:e) : e =
   match e with
   | E_fun(p,e) -> E_fun(p,name e)
   | E_fix(f,(p,e)) -> E_fix(f,(p,name e))
-  | E_var _ -> e
-  | _ -> assert false (* should be a function *)
+  | _ -> e
 
 let name_pi pi =
-  let ds = List.map (fun (x,e) -> (x,name_fun e)) pi.ds in
-  let main = name_fun pi.main in
+  let ds = List.map (fun (x,e) -> (x,name_top e)) pi.ds in
+  let main = name_top pi.main in
   { pi with ds ; main }
  

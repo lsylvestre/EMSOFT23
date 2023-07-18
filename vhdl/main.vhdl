@@ -17,99 +17,38 @@ entity main is
 end entity;
 architecture rtl of main is
 
-  type t_state is (Compute);
-  signal state: t_state;
+  type \t_state\ is (Compute);
+  signal state: \t_state\;
   
   begin
     process(reset, clk)
-      variable S024_t : value(0 to 0);
-      variable v20 : value(0 to 0);
-      variable v45 : value(0 to 1);
-      variable S05_x : value(0 to 0);
-      variable v21 : value(0 to 1);
-      variable v44 : value(0 to 1);
-      variable v36 : value(0 to 1);
-      variable v38 : value(0 to 1);
-      variable v18_init : value(0 to 0);
-      variable v22 : value(0 to 0);
-      variable v23 : value(0 to 0);
-      variable v39 : value(0 to 1);
-      variable v20_init : value(0 to 0);
-      variable v22_init : value(0 to 0);
-      variable S020_a : value(0 to 0);
-      variable vanf14 : value(0 to 0);
-      variable vanf5 : value(0 to 1);
-      variable vanf13 : value(0 to 0);
-      variable vanf16 : value(0 to 0);
-      variable S023_r : value(0 to 0);
-      variable vanf9 : value(0 to 0);
-      variable S021_b : value(0 to 0);
-      variable vanf10 : value(0 to 0);
-      variable v35 : value(0 to 1);
-      variable v37 : value(0 to 1);
-      variable v19 : value(0 to 0);
-      variable v33 : value(0 to 0);
-      variable v43 : value(0 to 1);
-      variable S04_w : value(0 to 0);
-      variable v18 : value(0 to 1);
-      variable S022_c : value(0 to 0);
-      variable v25 : value(0 to 1);
-      variable vanf11 : value(0 to 0);
-      variable v40 : value(0 to 1);
-      variable v29 : value(0 to 1);
-      variable v19_init : value(0 to 0);
-      variable v41 : value(0 to 1);
-      variable vanf7 : value(0 to 0);
-      variable v21_init : value(0 to 0);
-      variable v34 : value(0 to 1);
-      variable v42 : value(0 to 1);
-      variable v23_init : value(0 to 0);
+      variable \$5\, \$41\, \$34\, \$37\, \$43\, \$40\, \$42\, \$35\, \$39\, 
+               \$44\, \$36\, \$18\, \$38\, \$21\, \$25\, \$45\, \$29\
+               : value(0 to 1);
+      variable \$8_r\, \$19\, \$23\, \$33\, x, \$23_init\, \$6_a\, \_\, 
+               \$13\, \$22\, \$21_init\, \$9\, \$19_init\, \$18_init\, c, 
+               \$7_b\, \$14\, \$16\, \$7\, \$11\, \$20\, \$10\, \$22_init\, 
+               t, \$20_init\
+               : value(0 to 0);
       
     begin
       if (reset = '1') then
-        S024_t := (others => '0');
-        v20 := (others => '0');
-        v45 := (others => '0');
-        S05_x := (others => '0');
-        v21 := (others => '0');
-        v44 := (others => '0');
-        v36 := (others => '0');
-        v38 := (others => '0');
-        v18_init := (others => '0');
-        v22 := (others => '0');
-        v23 := (others => '0');
-        v39 := (others => '0');
-        v20_init := (others => '0');
-        v22_init := (others => '0');
-        S020_a := (others => '0');
-        vanf14 := (others => '0');
-        vanf5 := (others => '0');
-        vanf13 := (others => '0');
+        default_zero(\$29\); default_zero(\$45\); default_zero(\$20_init\); 
+        default_zero(t); default_zero(\$22_init\); default_zero(\$25\); 
+        default_zero(\$21\); default_zero(\$10\); default_zero(\$38\); 
+        default_zero(\$18\); default_zero(\$20\); default_zero(\$36\); 
+        default_zero(\$11\); default_zero(\$7\); default_zero(\$44\); 
+        default_zero(\$16\); default_zero(\$39\); default_zero(\$14\); 
+        default_zero(\$7_b\); default_zero(c); 
         result <= (others => '0');
-        vanf16 := (others => '0');
-        S023_r := (others => '0');
-        vanf9 := (others => '0');
-        S021_b := (others => '0');
-        vanf10 := (others => '0');
-        v35 := (others => '0');
-        v37 := (others => '0');
-        v19 := (others => '0');
-        v33 := (others => '0');
-        v43 := (others => '0');
-        S04_w := (others => '0');
-        v18 := (others => '0');
-        S022_c := (others => '0');
-        v25 := (others => '0');
-        vanf11 := (others => '0');
-        v40 := (others => '0');
-        v29 := (others => '0');
-        v19_init := (others => '0');
-        v41 := (others => '0');
-        vanf7 := (others => '0');
-        v21_init := (others => '0');
-        v34 := (others => '0');
-        v42 := (others => '0');
-        v23_init := (others => '0');
+        default_zero(\$18_init\); default_zero(\$19_init\); 
+        default_zero(\$35\); default_zero(\$9\); default_zero(\$21_init\); 
+        default_zero(\$22\); default_zero(\$42\); default_zero(\$13\); 
+        default_zero(\$40\); default_zero(\_\); default_zero(\$43\); 
+        default_zero(\$37\); default_zero(\$6_a\); default_zero(\$34\); 
+        default_zero(\$41\); default_zero(\$23_init\); default_zero(x); 
+        default_zero(\$33\); default_zero(\$23\); default_zero(\$19\); 
+        default_zero(\$5\); default_zero(\$8_r\); 
         rdy <= "1";
         state <= Compute;
         
@@ -118,83 +57,83 @@ architecture rtl of main is
           case state is
           when Compute =>
             rdy <= "0";
-            S020_a := argument(0 to 0);
-            S021_b := argument(1 to 1);
-            S022_c := argument(2 to 2);
-            S023_r := argument(3 to 3);
-            if mixc_not(v23_init)(0) = '1' then
-              v23 := "0";
-              v23_init := "1";
+            \$6_a\ := argument(0 to 0);
+            \$7_b\ := argument(1 to 1);
+            c := argument(2 to 2);
+            \$8_r\ := argument(3 to 3);
+            if mixc_not(\$23_init\)(0) = '1' then
+              \$23\ := "0";
+              \$23_init\ := "1";
             end if;
-            v45 := v23 & S020_a;
-            vanf10 := mixc_or(v45);
-            vanf11 := mixc_not(S023_r);
-            v44 := vanf10 & vanf11;
-            vanf9 := mixc_and(v44);
-            v23 := vanf9;
-            vanf13 := v23;
-            if mixc_not(v22_init)(0) = '1' then
-              v22 := "0";
-              v22_init := "1";
+            \$45\ := \$23\ & \$6_a\;
+            \$10\ := mixc_or(\$45\);
+            \$11\ := mixc_not(\$8_r\);
+            \$44\ := \$10\ & \$11\;
+            \$9\ := mixc_and(\$44\);
+            \$23\ := \$9\;
+            \$13\ := \$23\;
+            if mixc_not(\$22_init\)(0) = '1' then
+              \$22\ := "0";
+              \$22_init\ := "1";
             end if;
-            v43 := v22 & S021_b;
-            vanf10 := mixc_or(v43);
-            vanf11 := mixc_not(S023_r);
-            v42 := vanf10 & vanf11;
-            vanf9 := mixc_and(v42);
-            v22 := vanf9;
-            vanf14 := v22;
-            v41 := vanf13 & vanf14;
-            vanf16 := mixc_and(v41);
-            if mixc_not(v21_init)(0) = '1' then
-              v21 := "0" & vanf16;
-              v21_init := "1";
+            \$43\ := \$22\ & \$7_b\;
+            \$10\ := mixc_or(\$43\);
+            \$11\ := mixc_not(\$8_r\);
+            \$42\ := \$10\ & \$11\;
+            \$9\ := mixc_and(\$42\);
+            \$22\ := \$9\;
+            \$14\ := \$22\;
+            \$41\ := \$13\ & \$14\;
+            \$16\ := mixc_and(\$41\);
+            if mixc_not(\$21_init\)(0) = '1' then
+              \$21\ := "0" & \$16\;
+              \$21_init\ := "1";
             end if;
-            vanf5 := vanf16 & v21(0 to 0);
-            v21 := vanf5;
-            v29 := v21;
-            S04_w := v29(0 to 0);
-            S05_x := v29(1 to 1);
-            vanf7 := mixc_not(S05_x);
-            v40 := vanf7 & vanf16;
-            S024_t := mixc_and(v40);
-            if mixc_not(v20_init)(0) = '1' then
-              v20 := "0";
-              v20_init := "1";
+            \$5\ := \$16\ & \$21\(0 to 0);
+            \$21\ := \$5\;
+            \$29\ := \$21\;
+            \_\ := \$29\(0 to 0);
+            x := \$29\(1 to 1);
+            \$7\ := mixc_not(x);
+            \$40\ := \$7\ & \$16\;
+            t := mixc_and(\$40\);
+            if mixc_not(\$20_init\)(0) = '1' then
+              \$20\ := "0";
+              \$20_init\ := "1";
             end if;
-            v39 := v20 & S024_t;
-            vanf10 := mixc_or(v39);
-            vanf11 := mixc_not(S023_r);
-            v38 := vanf10 & vanf11;
-            vanf9 := mixc_and(v38);
-            v20 := vanf9;
-            vanf13 := v20;
-            if mixc_not(v19_init)(0) = '1' then
-              v19 := "0";
-              v19_init := "1";
+            \$39\ := \$20\ & t;
+            \$10\ := mixc_or(\$39\);
+            \$11\ := mixc_not(\$8_r\);
+            \$38\ := \$10\ & \$11\;
+            \$9\ := mixc_and(\$38\);
+            \$20\ := \$9\;
+            \$13\ := \$20\;
+            if mixc_not(\$19_init\)(0) = '1' then
+              \$19\ := "0";
+              \$19_init\ := "1";
             end if;
-            v37 := v19 & S022_c;
-            vanf10 := mixc_or(v37);
-            vanf11 := mixc_not(S023_r);
-            v36 := vanf10 & vanf11;
-            vanf9 := mixc_and(v36);
-            v19 := vanf9;
-            vanf14 := v19;
-            v35 := vanf13 & vanf14;
-            vanf16 := mixc_and(v35);
-            if mixc_not(v18_init)(0) = '1' then
-              v18 := "0" & vanf16;
-              v18_init := "1";
+            \$37\ := \$19\ & c;
+            \$10\ := mixc_or(\$37\);
+            \$11\ := mixc_not(\$8_r\);
+            \$36\ := \$10\ & \$11\;
+            \$9\ := mixc_and(\$36\);
+            \$19\ := \$9\;
+            \$14\ := \$19\;
+            \$35\ := \$13\ & \$14\;
+            \$16\ := mixc_and(\$35\);
+            if mixc_not(\$18_init\)(0) = '1' then
+              \$18\ := "0" & \$16\;
+              \$18_init\ := "1";
             end if;
-            vanf5 := vanf16 & v18(0 to 0);
-            v18 := vanf5;
-            v25 := v18;
-            S04_w := v25(0 to 0);
-            S05_x := v25(1 to 1);
-            vanf7 := mixc_not(S05_x);
-            v34 := vanf7 & vanf16;
-            v33 := mixc_and(v34);
-            result <= v33;
+            \$5\ := \$16\ & \$18\(0 to 0);
+            \$18\ := \$5\;
+            \$25\ := \$18\;
+            \_\ := \$25\(0 to 0);
+            x := \$25\(1 to 1);
+            \$7\ := mixc_not(x);
+            \$34\ := \$7\ & \$16\;
+            \$33\ := mixc_and(\$34\);
+            result <= \$33\;
             rdy <= "1";
             state <= Compute;
           end case;

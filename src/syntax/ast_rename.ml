@@ -1,23 +1,37 @@
 open Ast
 open Ast_subst
+open Pattern
 
-module Gensym = struct
-  let make_name n x =
+(* custom symbol generator *)
+module Gensym : sig val reset : unit -> unit
+                    val gensym : x -> x end = struct
+  
+  let of_int (n:int) : x =
+    "$"^string_of_int n
+
+  let make_name (n:int) (x:x) : x =
     let x = if x = "_" then "w" else x in
-    "S0"^string_of_int n^"_"^x
-
+    of_int n^"_"^x
 
   let c = ref 0
 
-  let gensym x =
+  let rename x =
     incr c;
-    if String.length x > 2 && x.[0] = 'S' && x.[1] = '0' then
-      (match String.index_from_opt x 2 '_' with
+    if String.length x > 1 && x.[0] = '$' then
+      (match String.index_from_opt x 1 '_' with
       | Some i -> make_name !c (String.sub x (i+1) (String.length x - i-1))
-      | None -> make_name !c x)
+      | None -> of_int !c)
     else make_name !c x
 
-  let reset () = c := 0
+  let h = Hashtbl.create 10;;
+
+  let reset () = 
+    c := 0;
+    Hashtbl.clear h
+
+  let gensym x =
+    if Hashtbl.mem h x then (let y = rename x in Hashtbl.add h x y; y)
+    else (Hashtbl.add h x x; x)
 
 end
 
@@ -67,7 +81,7 @@ let rec rename_e e =
       E_if(ss e1, ss e2, ss e3)
   | E_lastIn(x,e1,e2) ->
       let y = gensym x in
-      E_lastIn(y,ss e1,ss @@ subst_e x (E_var y) e2)
+      E_lastIn(y,ss e1, ss @@ subst_e x (E_var y) e2)
   | E_set(x,e1) ->
       E_set(x,ss e1)
   | E_static_array_get(x,e1) ->
@@ -83,6 +97,7 @@ let rec rename_e e =
       E_par(ss e1, ss e2)
 
 let rename_pi pi =
+  Gensym.reset (); 
   let ds = List.map (fun (x,e) -> x,rename_e e) pi.ds in
   let main = rename_e pi.main in
   { pi with ds ; main }

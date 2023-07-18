@@ -8,13 +8,14 @@ let print_elaborated_code_flag = ref true
 
 let compile name ty fmt pi =
 
-  (* D.display D.Front ([],pi.main);*)
+  D.display_pi D.Front pi;
 
   let pi = Encode_reg_exec.encode_pi pi in
 
   D.display_pi D.Encode pi;
 
   let pi = Middle_end.compile pi in
+  let pi = Fun_shape_entry_point.fun_shape_entry_point pi in
   let pi = Rename_main_arg.rename_main_arg_pi pi in
 
   D.display_pi D.MiddleEnd pi;

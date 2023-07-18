@@ -4,27 +4,32 @@ open Ast_subst
 
 (**
 
-goal :
-given a program in ANF-form, e.g.
+goal: given a program in ANF-form, e.g.
   [let (f,g) = let f1 = fun x -> e in
                let f2 = fun y -> e' in
                (f1,f2)
    in
-   (f(g(3)))], systematically moves up bindings to obtain :
+   (f(g(3)))], 
+
+systematically moves up bindings to obtain:
 
      [let f1 = fun x -> e in
       let f2 = fun y -> e' in
       let (f,g) = (f1,f2) in
       (f(g(3)))]
 
-    which is needed (after copy propagation) for elimintation of high-order
+    which is needed (after copy propagation) for eliminating high-order
     (ensuring in particular, above, that tuples do not contain functions. *)
 
-(* must avoid scope extrusion and preserve the order of computations *)
+(* [!!] must avoid scope extrusion and preserve the order of computations *)
 
 
+(** [let_floating e] perform let floating on expression [e] *)
+let rec let_floating (e:e) : e =
+  let bs, e = glob e in
+  List.fold_right (fun (p,e) acc -> E_letIn(p,e,acc)) bs e
 
-let rec glob e =
+and glob (e:e) : ((p * e) list * e) =
   let open Ast in
   match e with
   | E_deco _ ->
@@ -69,11 +74,8 @@ let rec glob e =
   | E_par(e1,e2) ->
       [],E_par(let_floating e1,let_floating e2)
 
-and let_floating e =
-  let bs, e = glob e in
-  List.fold_right (fun (p,e) acc -> E_letIn(p,e,acc)) bs e
 
-
+(** [let_floating_pi pi] perform let floating on program [pi] *)
 let let_floating_pi pi =
   Map_pi.map let_floating pi
 

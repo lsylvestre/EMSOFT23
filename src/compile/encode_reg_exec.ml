@@ -1,7 +1,9 @@
+(* expand each [reg] and [exec] constructs in the given epxression 
+   into one equivalent expression using [var/in], [x <- e] and [step] constructs *)
+
 open Ast
 
-
-let rec encode e =
+let rec encode (e:e) : e =
   let ss = encode in
   match e with
   | E_deco(e1,deco) ->
@@ -55,5 +57,6 @@ let rec encode e =
       E_letIn(P_unit, E_step(E_letIn(P_unit,(E_set(res,E_tuple[e0;E_const(Bool false)])),
                                    E_letIn(P_var y,e1,E_set(res,E_tuple[E_var y;E_const(Bool true)]))),k), E_var res))
 
-let encode_pi pi =
+
+let encode_pi (pi:pi) : pi =
   Map_pi.map encode pi

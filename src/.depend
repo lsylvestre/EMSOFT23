@@ -88,6 +88,7 @@ src/compile/compile.cmo : \
     src/compile/middle_end/rename_main_arg.cmo \
     src/compile/middle_end.cmo \
     src/compile/back_end/target/gen_vhdl.cmo \
+    src/compile/middle_end/fun_shape_entry_point.cmo \
     src/compile/back_end/target/fsm_typing.cmo \
     src/compile/back_end/target/fsm_syntax.cmo \
     src/compile/back_end/fsm_comp.cmo \
@@ -101,6 +102,7 @@ src/compile/compile.cmx : \
     src/compile/middle_end/rename_main_arg.cmx \
     src/compile/middle_end.cmx \
     src/compile/back_end/target/gen_vhdl.cmx \
+    src/compile/middle_end/fun_shape_entry_point.cmx \
     src/compile/back_end/target/fsm_typing.cmx \
     src/compile/back_end/target/fsm_syntax.cmx \
     src/compile/back_end/fsm_comp.cmx \
@@ -137,6 +139,7 @@ src/compile/middle_end.cmo : \
     src/compile/inspect/display_internal_steps.cmo \
     src/compile/middle_end/deadcode_elimination.cmo \
     src/syntax/ast_rename.cmo \
+    src/syntax/ast_ensure_rec_naming.cmo \
     src/syntax/ast.cmo \
     src/compile/middle_end/anf.cmo
 src/compile/middle_end.cmx : \
@@ -152,15 +155,18 @@ src/compile/middle_end.cmx : \
     src/compile/inspect/display_internal_steps.cmx \
     src/compile/middle_end/deadcode_elimination.cmx \
     src/syntax/ast_rename.cmx \
+    src/syntax/ast_ensure_rec_naming.cmx \
     src/syntax/ast.cmx \
     src/compile/middle_end/anf.cmx
 src/compile/middle_end/anf.cmo : \
+    src/syntax/pattern.cmo \
     src/syntax/map_pi.cmo \
     src/compile/combinatorial.cmo \
     src/syntax/ast_undecorated.cmo \
     src/syntax/ast_subst.cmo \
     src/syntax/ast.cmo
 src/compile/middle_end/anf.cmx : \
+    src/syntax/pattern.cmx \
     src/syntax/map_pi.cmx \
     src/compile/combinatorial.cmx \
     src/syntax/ast_undecorated.cmx \
@@ -177,11 +183,13 @@ src/compile/middle_end/fun_shape_entry_point.cmo : \
 src/compile/middle_end/fun_shape_entry_point.cmx : \
     src/syntax/ast.cmx
 src/compile/middle_end/inline.cmo : \
+    src/syntax/pattern.cmo \
     src/syntax/ast_undecorated.cmo \
     src/syntax/ast_subst.cmo \
     src/syntax/ast.cmo \
     src/compile/middle_end/anf.cmo
 src/compile/middle_end/inline.cmx : \
+    src/syntax/pattern.cmx \
     src/syntax/ast_undecorated.cmx \
     src/syntax/ast_subst.cmx \
     src/syntax/ast.cmx \
@@ -197,12 +205,14 @@ src/compile/middle_end/instantiate.cmx : \
     src/syntax/ast_rename.cmx \
     src/syntax/ast.cmx
 src/compile/middle_end/lambda_lifting.cmo : \
+    src/syntax/pattern.cmo \
     src/syntax/free_vars.cmo \
     src/syntax/ast_undecorated.cmo \
     src/syntax/ast_subst.cmo \
     src/syntax/ast.cmo \
     src/compile/middle_end/anf.cmo
 src/compile/middle_end/lambda_lifting.cmx : \
+    src/syntax/pattern.cmx \
     src/syntax/free_vars.cmx \
     src/syntax/ast_undecorated.cmx \
     src/syntax/ast_subst.cmx \
@@ -318,10 +328,12 @@ src/interp/interp.cmx : \
     src/syntax/ast_pprint.cmx \
     src/syntax/ast.cmx
 src/interp/norm.cmo : \
+    src/syntax/pattern.cmo \
     src/compile/middle_end/instantiate.cmo \
     src/syntax/ast_rename.cmo \
     src/syntax/ast.cmo
 src/interp/norm.cmx : \
+    src/syntax/pattern.cmx \
     src/compile/middle_end/instantiate.cmx \
     src/syntax/ast_rename.cmx \
     src/syntax/ast.cmx
@@ -380,14 +392,18 @@ src/syntax/ast_pprint.cmo : \
 src/syntax/ast_pprint.cmx : \
     src/syntax/ast.cmx
 src/syntax/ast_rename.cmo : \
+    src/syntax/pattern.cmo \
     src/syntax/ast_subst.cmo \
     src/syntax/ast.cmo
 src/syntax/ast_rename.cmx : \
+    src/syntax/pattern.cmx \
     src/syntax/ast_subst.cmx \
     src/syntax/ast.cmx
 src/syntax/ast_subst.cmo : \
+    src/syntax/pattern.cmo \
     src/syntax/ast.cmo
 src/syntax/ast_subst.cmx : \
+    src/syntax/pattern.cmx \
     src/syntax/ast.cmx
 src/syntax/ast_undecorated.cmo : \
     src/syntax/map_pi.cmo \
@@ -402,6 +418,10 @@ src/syntax/free_vars.cmx : \
 src/syntax/map_pi.cmo : \
     src/syntax/ast.cmo
 src/syntax/map_pi.cmx : \
+    src/syntax/ast.cmx
+src/syntax/pattern.cmo : \
+    src/syntax/ast.cmo
+src/syntax/pattern.cmx : \
     src/syntax/ast.cmx
 src/typing/typing.cmo : \
     src/prelude.cmo \

@@ -1,22 +1,37 @@
+(** Pretty printer for source programs *)
+
 open Ast
 
-
-(* pretty printer *)
+(** flag [hexa_int_pp_flag]: 
+    - when true, integers displayed in hexadecimal
+    - when false, integers displayed in decimal
+ *)
+let hexa_int_pp_flag = ref false
 
 open Format ;;
-set_ellipsis_text "<...>";;
+set_ellipsis_text "<...>";; (* Format customization *)
 set_max_boxes 50 ;;
 
-let parenthesize ~paren pp fmt a =
+type fmt = formatter
+type 'a pp = fmt -> 'a -> unit
+
+(** auxilliary function for parenthesizing *)
+let parenthesize ~(paren:bool) (pp:'a pp) (fmt:fmt) (a:'a) : unit =
  if paren then fprintf fmt "(%a)" pp a else pp fmt a
 
-let rec size_is_not_zero = function
-| T_size n -> n > 0
-| T_add(t1,t2) | T_max(t1,t2) -> size_is_not_zero t1 || size_is_not_zero t2
-| T_var _ -> false
-| _ -> false
 
-let pp_ty fmt ty =
+(** [size_is_not_zero ty] returns true iff [ty] a size type of size 0,
+    e.g., [max(0,0+0)]. *)
+let rec size_is_not_zero (ty:ty) : bool =
+  match ty with
+  | T_size n -> n > 0
+  | T_add(t1,t2) | T_max(t1,t2) -> size_is_not_zero t1 || size_is_not_zero t2
+  | T_var _ -> false
+  | _ -> false
+
+
+(** pretty printer for types *)
+let pp_ty (fmt:fmt) (ty:ty) : unit =
   let h_assoc_tvars = Hashtbl.create 10 in
   let tvars_cur = ref 0 in
   let assoc_tvars n =
@@ -97,39 +112,57 @@ let pp_ty fmt ty =
   in
   pp_type ~paren:false fmt ty
 
-let pp_ident fmt x =
+
+(** pretty printer for identifiers *)
+let pp_ident (fmt:fmt) (x:x) : unit =
   fprintf fmt "%s" x
 
-let pp_op fmt op =
-    let f = fprintf fmt "%s" in
-    match op with
-    | Add -> f "+"
-    | Sub -> f "-"
-    | Mult -> f "*"
-    | Le -> f "<="
-    | Lt -> f "<"
-    | Ge -> f ">="
-    | Gt -> f ">"
-    | Eq -> f "=="
-    | Neq -> f "!="
-    | Not -> f "not"
-    | And -> f "&&"
-    | Or -> f "or"
-    | Mod -> f "mod"
-    | Div -> f "/"
-    | Abs -> f "abs"
-    | Wait n -> fprintf fmt "wait<%d>" n
-    | GetTuple {pos=0;arity=2} -> f "fst"
-    | GetTuple {pos=1;arity=2} -> f "snd"
-    | GetTuple {pos=i;arity=_} -> fprintf fmt "get_tuple<%d>" i
-    | String_length -> f "string_length"
-    | Assert -> f "assert"
-    | Random -> f "random"
-    | Print -> f "print"
-    | To_string -> f "to_string"
-    | TyConstr ty -> fprintf fmt "(as_type %a)@,"  pp_ty ty
 
-let pp_external fmt op =
+(** pretty printer for operators *)
+let pp_op (fmt:fmt) (op:op) : unit =
+    let pp_str (s:string) : unit =
+      fprintf fmt "%s" s
+    in
+    match op with
+    | Add -> pp_str "+"
+    | Sub -> pp_str "-"
+    | Mult -> pp_str "*"
+    | Le -> pp_str "<="
+    | Lt -> pp_str "<"
+    | Ge -> pp_str ">="
+    | Gt -> pp_str ">"
+    | Eq -> pp_str "=="
+    | Neq -> pp_str "<>"
+    | Not -> pp_str "not"
+    | And -> pp_str "&&"
+    | Or -> pp_str "or"
+    | Mod -> pp_str "mod"
+    | Div -> pp_str "/"
+    | Abs -> pp_str "abs"
+    | Wait n ->
+        fprintf fmt "wait<%d>" n
+    | GetTuple {pos=0;arity=2} ->
+        pp_str "fst"
+    | GetTuple {pos=1;arity=2} ->
+        pp_str "snd"
+    | GetTuple {pos=i;arity=_} ->
+        fprintf fmt "get_tuple<%d>" i
+    | String_length ->
+        pp_str "string_length"
+    | Assert -> 
+        pp_str "assert"
+    | Random ->
+        pp_str "random"
+    | Print ->
+        pp_str "print"
+    | To_string ->
+        pp_str "to_string"
+    | TyConstr ty ->
+        fprintf fmt "(as_type %a)@,"  pp_ty ty
+
+
+(** pretty printer for asynchronous primitives *)
+let pp_external (fmt:fmt) (op:extern) : unit =
   fprintf fmt @@
     match op with
     | Array_make -> "array_make"
@@ -138,25 +171,26 @@ let pp_external fmt op =
     | Array_length -> "array_length"
 
 
-let hexa_int_pp_flag = ref false
+(** pretty printer for constants *)
+let rec pp_const (fmt:fmt) (c:c) : unit =
+  match c with
+  | Int (n,_) ->
+      if !hexa_int_pp_flag then fprintf fmt "0x%x" n else fprintf fmt "%d" n
+  | Bool b -> fprintf fmt "%b" b
+  | Unit -> fprintf fmt "()"
+  | String s -> fprintf fmt "%s" s
+  | Op op ->
+     fprintf fmt "(%a)"
+        pp_op op
+  | External ext ->
+     fprintf fmt "(%a)"
+        pp_external ext
+  | V_loc l ->
+      fprintf fmt "#%a" pp_ident l
 
 
-let rec pp_const fmt = function
-| Int (n,_) ->
-    if !hexa_int_pp_flag then fprintf fmt "0x%x" n else fprintf fmt "%d" n
-| Bool b -> fprintf fmt "%b" b
-| Unit -> fprintf fmt "()"
-| String s -> fprintf fmt "%s" s
-| Op op ->
-   fprintf fmt "(%a)"
-      pp_op op
-| External ext ->
-   fprintf fmt "(%a)"
-      pp_external ext
-| V_loc l -> (* only for evaluation *)
-    fprintf fmt "#%a" pp_ident l
-
-let rec pp_pat fmt p =
+(** pretty printer for patterns *)
+let rec pp_pat (fmt:fmt) (p:p) : unit =
   match p with
   | P_unit ->
       fprintf fmt "()"
@@ -169,7 +203,9 @@ let rec pp_pat fmt p =
             pp_pat fmt ps;
       fprintf fmt ")"
 
-let rec pp_exp fmt e =
+
+(** pretty printer for expressions *)
+let rec pp_exp (fmt:fmt) (e:e) : unit =
   match e with
   | E_deco(e,loc) ->
       pp_exp fmt e
@@ -178,9 +214,14 @@ let rec pp_exp fmt e =
   | E_var x ->
       pp_ident fmt x
   | E_fun (p,e) ->
-       fprintf fmt "@[<v 2>(fun %a ->@,%a)@]" pp_pat p pp_exp e
+       fprintf fmt "@[<v 2>(fun %a ->@,%a)@]"
+          pp_pat p
+          pp_exp e
   | E_fix (f,(p,e)) ->
-       fprintf fmt "@[<v 2>(fix %a (fun %a ->@,%a))@]" pp_ident f pp_pat p pp_exp e
+       fprintf fmt "@[<v 2>(fix %a (fun %a ->@,%a))@]"
+          pp_ident f 
+          pp_pat p 
+          pp_exp e
   | E_if(e,e1,e2) ->
       fprintf fmt "(@[<v>if %a@,then %a@,else %a@])"
         pp_exp e
@@ -192,7 +233,9 @@ let rec pp_exp fmt e =
         pp_exp e1
         pp_exp e2
   | E_app(e1,e2) ->
-      fprintf fmt "@[<v>(%a %a)@]" pp_exp e1 pp_exp e2
+      fprintf fmt "@[<v>(%a %a)@]"
+        pp_exp e1
+        pp_exp e2
   | E_tuple es ->
      fprintf fmt "@[(";
       pp_print_list
@@ -206,37 +249,43 @@ let rec pp_exp fmt e =
       fprintf fmt "(@[<v>exec[%s] %a default %a@])"
         x pp_exp e1 pp_exp e2
   | E_lastIn(x,e1,e2) ->
-      fprintf fmt "(@[<v>last %a = %a in@,%a@])" pp_ident x pp_exp e1 pp_exp e2
+      fprintf fmt "(@[<v>last %a = %a in@,%a@])"
+        pp_ident x
+        pp_exp e1
+        pp_exp e2
   | E_set(x,e1) ->
       fprintf fmt "(@[<v>(%a <- %a)@])"
         pp_ident x pp_exp e1
   | E_static_array_get(x,e1) ->
       fprintf fmt "@[<v>(%a[%a])@]"
-        pp_ident x pp_exp e1
+        pp_ident x
+        pp_exp e1
   | E_static_array_length(x) ->
       fprintf fmt "@[<v>%a.length@]"
         pp_ident x
   | E_static_array_set(x,e1,e2) ->
       fprintf fmt "@[<v>(%a[%a] <- %a)@]"
-        pp_ident x pp_exp e1 pp_exp e2
+        pp_ident x
+        pp_exp e1
+        pp_exp e2
   | E_step(e,x) ->
       fprintf fmt "[step %a]^%s"
         pp_exp e x
   | E_par(e1,e2) ->
       fprintf fmt "(%a || %a)"
-        pp_exp e1 pp_exp e2
+        pp_exp e1
+        pp_exp e2
 
-let pp_prog fmt (ds,e) =
-  fprintf fmt "@[<v>";
-  List.iter (fun (x,e) -> fprintf fmt "let %s = %a in@," x pp_exp e) ds;
-  fprintf fmt "%a@]" pp_exp e
 
-let pp_static fmt (g:static) =
+(** pretty printer for static declarations *)
+let pp_static (fmt:fmt) (g:static) : unit =
   match g with
   | Static_array(c,n) ->
     fprintf fmt "(%a)^%d" pp_const c n
 
-let pp_pi fmt {statics;ds;main} =
+(** pretty printer for programs *)
+let pp_pi (fmt:fmt) (pi:pi) : unit =
+  let {statics;ds;main} = pi in
   fprintf fmt "@[<v>";
   List.iter (fun (x,g) -> fprintf fmt "let %s = %a;;@," x pp_static g) statics;
   List.iter (fun (x,e) -> fprintf fmt "let %s = %a;;@," x pp_exp e) ds;

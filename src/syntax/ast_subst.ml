@@ -1,10 +1,11 @@
 open Ast
+open Pattern
 
 (* substitutions avoiding capture *)
 
 let subst_ident x ex y =
   if x = y then
-    (match un_deco ex with
+    (match un_annot ex with
      | E_var z -> z
      | _ -> assert false) else y
 

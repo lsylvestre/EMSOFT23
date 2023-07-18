@@ -1,33 +1,39 @@
-
 open Ast
-open Free_vars
+open Pattern
 
-(** globalize all functions, by Lambda-lifting [Johnsson, 1982]:
+(**  
+    globalize all functions, by Lambda-lifting [Johnsson, 1982]:
 
-    Given expression [e] in ANF form, return a program [(ds,e)] in ANF-form
+    Given an expression [e] in ANF form with renaming (i.e., all bindings have different name), 
+    return a program [(ds,e)] in ANF-form with renaming
     where all functions are defined in [ds].
 
-    Our version of the algorithmic works in three steps:
-    - [prepare]: add a second parameter at each function definition and function call
-      to represent the lexical environment of the function (initialy empty)
-    - [lift]: add free variables of each function definition, as a tuple,
+    Our version of the algorithmic works in two steps:
+    - [lifting] adds free variables of each function definition, as a tuple,
       into the second parameter (environment) of the function definition
       and all these call. [lift] has to be repeat until all functions are close
-    - [glob]: globalize all (close) functions.
-      The order of globalized bindings is important!
-        Indeed, global functions are not mutually-recursive:
-        -- semantics is different for call of recursive or non recursive functions,
-        -- there is only the construct [fix] of the language to encode recursion.
+    - [globalize] globalizes all (close) functions.
+      The order of globalized bindings is important
+      since global functions are *not* mutually-recursive.
 **)
 
-let fv_except_statics ~statics ~decls e =
-  SMap.filter (fun x _ -> not (SMap.mem x statics) && not (List.mem_assoc x decls)) (fv e)
+(** [fv ~statics ~decls e] returns the free variables of [e] that are not 
+    global definitions (bound in ~static and ~decls) *)
+let fv ~statics ~decls e =
+  SMap.filter (fun x _ -> not (SMap.mem x statics) && not (List.mem_assoc x decls)) (Free_vars.fv e)
 
 (** [has_changed] boolean flag setted to true each time a [lift] pass modifies
     the input expression *)
 let has_changed = ref false
 
-let lift_with_statics ~statics ~decls env e =
+(* bind each function name to its lexical environment
+    (as a collection of name grouped in a pattern) *)
+type env = p smap
+
+(** [lifting ~statics ~decls e] lifts expression [e]
+    considering [~statics] and [~decls] as toplevel definitions
+    that should not be added to lexical environments. *)
+let lifting ~statics ~decls (env:env) (e:e) : e =
   let rec lift env e =
     let open Ast in
     match e with
@@ -53,7 +59,7 @@ let lift_with_statics ~statics ~decls env e =
         E_if(exc1, lift env e2, lift env e3)
     | E_letIn(P_var f,(E_fun(p,e1) as phi),e2) ->
         let e1' = lift env e1 in
-        let xs = fv_except_statics ~statics ~decls phi in
+        let xs = fv ~statics ~decls phi in
         let vp = (vars_of_p p) in
         let p_env' = xs |> SMap.filter (fun x _ -> not (SMap.mem x vp) && not (SMap.mem x env))
                         |> SMap.bindings
@@ -72,7 +78,7 @@ let lift_with_statics ~statics ~decls env e =
                         lift env (E_letIn(P_var f,(E_fix(f,(p,e1'))),e2'))
         else
         let e1' = lift env e1 in
-        let xs = fv_except_statics ~statics ~decls phi in
+        let xs = fv ~statics ~decls phi in
         let vp = (vars_of_p p) in
         let p_env' = xs |> SMap.filter (fun x _ -> not (SMap.mem x vp) && not (SMap.mem x env) && x <> f)
                         |> SMap.bindings
@@ -86,11 +92,6 @@ let lift_with_statics ~statics ~decls env e =
            E_letIn(P_var f,(E_fix(f,(p,e1'))),lift env2 e2) )
     | E_letIn(p,e1,e2) ->
         E_letIn(p,lift env e1,lift env e2)
-    (* | E_fun _ as fe ->
-        let f = gensym ~prefix:"func" () in
-        lift env (E_letIn(P_var f,fe,E_var f))
-    | E_fix(f,_) as fe ->
-        lift env (E_letIn(P_var f,fe,E_var f)) (* ok if fv(fe) not empty ? *) *)
     | E_tuple es_atoms ->
         E_tuple es_atoms
     | E_lastIn(x,e1,e2) ->
@@ -116,13 +117,15 @@ let lift_with_statics ~statics ~decls env e =
 
 (** lifting has to be perform several time until reaching a fixpoint,
    then [has_changed] remains false *)
-let rec lift_until ~statics ~decls e =
+let rec lift_until ~statics ~decls (e:e) =
   has_changed := false;
-  let e' = lift_with_statics ~statics ~decls SMap.empty e in
+  let e' = lifting ~statics ~decls SMap.empty e in
   if !has_changed then lift_until ~statics ~decls e' else e'
 
 
-let glob_with_statics ~statics ~decls e =
+
+(** [globalize e] globalizes all local *close* functions in expression [e] *)
+let globalize (e:e) : ((x * e) list * e) =
   let rec glob e =
     let open Ast in
     match e with
@@ -146,10 +149,6 @@ let glob_with_statics ~statics ~decls e =
         let ds2,e2' = glob e2 in
         let ds3,e3' = glob e3 in
         ds2@ds3,E_if(xc1,e2',e3') (* ds2 and ds3 disjoint *)
-    | E_letIn(P_var x,e1,e2) when SMap.mem x statics || List.mem_assoc x decls ->
-        let ds1,e1' = glob e1 in
-        let ds2,e2' = glob e2 in
-        (x,e1')::ds1@ds2,e2'
     | E_letIn(p,e1,e2) ->
         let ds1,e1' = glob e1 in
         let ds2,e2' = glob e2 in
@@ -177,13 +176,20 @@ let glob_with_statics ~statics ~decls e =
         assert false (* already expanded *)
   in glob e
 
-let lambda_lifting ?(statics=SMap.empty) ~decls e =
+
+(** [lambda_lifting ~statics ~decls e] lambda-lifts expression [e],
+    considering [~statics] and [~decls] as toplevel definitions
+    that should not be added to lexical environments. *)
+let lambda_lifting ~statics ~decls (e:e) : ((x * e) list * e) =
     let e_lifted = (lift_until ~statics ~decls e) in
-    let ds',e_globalized = glob_with_statics ~statics ~decls e_lifted in
+    let ds',e_globalized = globalize e_lifted in
     (ds',e_globalized)
 
 
-let lambda_lifting_pi ?(statics=SMap.empty) pi =
+(** [lambda_lifting_pi pi] lambda-lifts program [pi]. *)
+let lambda_lifting_pi (pi:pi) : pi =
+  let statics = smap_of_list pi.statics 
+  in
   let rec loop acc ds_to_lambda_lift =
     match ds_to_lambda_lift with
     | [] ->
