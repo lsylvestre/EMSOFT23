@@ -186,10 +186,13 @@ let rec typing_s ~result h = function
       unify TBool (typing_a h a);
       typing_s ~result h s;
       Option.iter (typing_s ~result h) so
-  | S_case(a,hs) ->
+  | S_case(a,hs,os) ->
       let t = typing_a h a in
       List.iter (fun (c,s) -> unify (typing_c c) t;
-                            typing_s  ~result h s) hs
+                            typing_s ~result h s) hs;
+      (match os with
+      | None -> ()
+      | Some s_els -> typing_s ~result h s_els)
   | S_seq(s1,s2) ->
       typing_s  ~result h s1; typing_s  ~result h s2
   | S_continue(f,a,_) ->

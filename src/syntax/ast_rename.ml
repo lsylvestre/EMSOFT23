@@ -79,6 +79,8 @@ let rec rename_e e =
       E_letIn(pz, ss e1, ss @@ subst_p_e p ez e2)
   | E_if(e1,e2,e3) ->
       E_if(ss e1, ss e2, ss e3)
+  | E_match(e,hs,e_els) ->
+      E_match(ss e,List.map (fun (c,e) -> c,ss e) hs,ss e_els)
   | E_lastIn(x,e1,e2) ->
       let y = gensym x in
       E_lastIn(y,ss e1, ss @@ subst_e x (E_var y) e2)

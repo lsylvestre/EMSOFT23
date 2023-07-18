@@ -30,8 +30,8 @@ let rec encode ~result ~idle ~state_var ~rdy s =
   | S_if(a,s1,so) ->
       S_if(a, encode ~result ~idle ~state_var ~rdy s1,
               Option.map (encode ~result ~idle ~state_var ~rdy) so)
-  | S_case(a,hs) ->
-      S_case(a, List.map (fun (c,s) -> c,encode ~result ~idle ~state_var ~rdy s) hs)
+  | S_case(a,hs,so) ->
+      S_case(a, List.map (fun (c,s) -> c,encode ~result ~idle ~state_var ~rdy s) hs,Option.map (encode ~result ~idle ~state_var ~rdy) so)
   | S_letIn(x,a,s) ->
       S_letIn(x,a,encode ~result ~idle ~state_var ~rdy s)
   | S_set _ as s -> s

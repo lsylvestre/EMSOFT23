@@ -13,6 +13,7 @@ open Pattern
       | fix f (fun x -> e)
       | xc xc
       | if xc then e else e
+      | match xc with c -> e | ... | _ -> e
       | let p = e in e
       | reg x last xc
       | (exec e xc)^id
@@ -66,6 +67,9 @@ let rec anf (e:e) : e =
   | E_if(e1,e2,e3) ->
       plug (anf e1) @@ fun xc ->
       E_if(xc,anf e2,anf e3)
+  | E_match(e,hs,e_els) ->
+      plug (anf e) @@ fun xc ->
+      E_match(xc,List.map (fun (c,e) -> c,anf e) hs,anf e_els)
   | E_letIn(P_var f,(E_fix(g,(p,e1))),e2) when f <> g ->
       assert (not (pat_mem f p) && not (pat_mem g p));
       anf @@ E_letIn(P_var f,E_fix(f,(p,subst_e g (E_var f) e1)),e2)
@@ -117,6 +121,8 @@ let rec in_anf (e:e) : bool =
       in_anf e1
   | E_if(e1,e2,e3) ->
       is_xc e1 && in_anf e2 && in_anf e3
+  | E_match(e1,hs,e_els) ->
+      is_xc e1 && List.for_all (fun (_,e) -> in_anf e) hs && in_anf e_els
   | E_letIn(_,e1,e2) ->
       in_anf e1 && in_anf e2
   | E_tuple(es) ->

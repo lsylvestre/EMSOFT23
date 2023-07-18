@@ -86,7 +86,7 @@ let pp_ty (fmt:fmt) (ty:ty) : unit =
       fprintf fmt "string<%a>"
         (pp_type ~paren:false) tz
   | T_static{elem=t;size=tz} ->
-      fprintf fmt "%a buffer<%a>"
+      fprintf fmt "%a static<%a>"
         (pp_type ~paren:true) t
         (pp_type ~paren:false) tz
   | T_size n ->
@@ -227,6 +227,14 @@ let rec pp_exp (fmt:fmt) (e:e) : unit =
         pp_exp e
         pp_exp e1
         pp_exp e2
+  | E_match(e,hs,e_els) ->
+      fprintf fmt "(@[<v>match %a with@,%a@,| _ -> %a@])"
+        pp_exp e
+        (pp_print_list
+            ~pp_sep:(fun fmt () -> fprintf fmt ", ")
+            (fun fmt (c,e) -> fprintf fmt "| %a -> %a@," pp_const c pp_exp e))
+         hs
+        pp_exp e_els
   | E_letIn(p,e1,e2) ->
       fprintf fmt "(@[<v>let %a = %a@,in %a@])"
         pp_pat p

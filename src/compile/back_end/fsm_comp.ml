@@ -59,6 +59,9 @@ let rec to_a (e:Ast.e) : a =
   match e with
   | Ast.E_var x -> A_var x
   | Ast.E_const c -> A_const (to_c c)
+  | Ast.E_app(E_const(Op Assert),e) -> 
+      (* currently ignore assertion *)
+      A_const(Unit)
   | Ast.E_app(E_const(Op op),e) ->
       let_plug_a (to_a e) (fun x -> A_call(to_op op,A_var x))
   | Ast.E_if(e1,e2,e3) -> A_call(If,A_tuple [to_a e1;to_a e2;to_a e3])
@@ -162,6 +165,9 @@ let rec to_s ~statics ~tail x ks e =
                         S_buffer_set (Immediate,new_tvar(),y,x2,x3)))) ks)
 
 
+  | E_app(E_const(Op(Assert)),_) ->
+      (* currently ignore assertion *)
+      SMap.empty, return_atom (A_const(Unit))
   | E_app _ ->
       Format.fprintf Format.std_formatter "--> %a\n"  Ast_pprint.pp_exp  e;
       assert false (* computed functions should be eliminated before *)
@@ -178,6 +184,10 @@ let rec to_s ~statics ~tail x ks e =
      let w1,s1 = to_s ~statics ~tail x ks e1 in
      let w2,s2 = to_s ~statics ~tail x ks e2 in
      w1 ++> w2, S_if(to_a e,s1,Some s2)
+  | E_match(e1,hs,e_els) ->
+      let ws,hs' = List.split @@ List.map (fun (c,e1) -> let w1,s1 = to_s ~statics ~tail x ks e1 in w1,(to_c c,s1)) hs in
+      let w,s_els = to_s ~statics ~tail x ks e_els in
+      List.fold_right (++>) ws w, S_case(to_a e1,hs',Some s_els)
   | E_lastIn(y,e1,e2) ->
      (* todo: check if e1 is indeed always an atom, or not ? *)
      let w2,s2 = to_s ~statics ~tail x ks e2 in
@@ -230,10 +240,10 @@ and insert_kont w (x,s) =
         S_case(A_var (Naming_convention.instance_id_of_fun x),
                (List.map (fun (n,(x,sn)) ->
                            Enum (Naming_convention.instance_enum_const n),S_letIn(x,a,sn)
-                  ) l))
+                  ) l),None)
     | S_continue _ -> s'
     | S_if(a,s1,so) -> S_if(a,aux s1,Option.map aux so)
-    | S_case(a,hs) -> S_case(a,List.map (fun (c,s) -> c, aux s) hs)
+    | S_case(a,hs,so) -> S_case(a,List.map (fun (c,s) -> c, aux s) hs, Option.map aux so)
     | S_set _ -> s'
     | S_buffer_set _ -> s'
     | S_seq(s1,s2) ->  S_seq(aux s1,aux s2)

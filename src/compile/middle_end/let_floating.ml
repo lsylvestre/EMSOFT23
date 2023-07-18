@@ -50,6 +50,9 @@ and glob (e:e) : ((p * e) list * e) =
   | E_if(e1,e2,e3) ->
       let ds1,e1' = glob e1 in
       ds1,E_if(e1',let_floating e2,let_floating e3)
+  | E_match(e1,hs,e_els) ->
+      let ds1,e1' = glob e1 in
+      ds1,E_match(e1',List.map (fun (c,e) -> c,let_floating e) hs,let_floating e_els)
   | E_letIn(p,e1,e2) ->
       let ds1,e1' = glob e1 in
       ds1@[(p,e1')],let_floating e2

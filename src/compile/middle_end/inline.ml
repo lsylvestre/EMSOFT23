@@ -20,6 +20,9 @@ let rec simplify e =
       (* e1 is of type bool and is initially a variable x (if in ANF-form),
          so, x cannot be substituted by a function) *)
       E_if(e1,simplify e2,simplify e3)
+  | E_match(e1,hs,e_els) ->
+      assert(Anf.is_xc e1);
+      E_match(e1,List.map (fun (c,e) -> c,simplify e) hs,simplify e_els)
   | E_letIn(p,e1,e2) ->
       E_letIn(p,simplify e1,simplify e2)
   | E_fun(x,e) ->

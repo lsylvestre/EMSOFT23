@@ -38,6 +38,8 @@ let rec ensure_rec_naming_e e =
       | _ -> E_letIn(p,ss e1,ss e2))
   | E_if(e1,e2,e3) ->
       E_if(ss e1, ss e2, ss e3)
+  | E_match(e,hs,e_els) ->
+      E_match(ss e, List.map (fun (c,e) -> c,ss e) hs, ss e_els)
   | E_lastIn(x,e1,e2) ->
       E_lastIn(x,ss e1,ss e2)
   | E_set(x,e1) ->

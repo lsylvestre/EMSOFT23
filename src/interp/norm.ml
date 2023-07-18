@@ -25,6 +25,8 @@ let rec inline env e =
       E_tuple (List.map (inline env) es)
   | E_if(e1,e2,e3) ->
       E_if(inline env e1,inline env e2,inline env e3)
+  | E_match(e,hs,e_els) ->
+      E_match(inline env e,List.map (fun (c,e) -> c,inline env e) hs,inline env e_els)
   | E_letIn(p,e1,e2) ->
       let e1 = inline env e1 in
       let r = bindings p e1 in

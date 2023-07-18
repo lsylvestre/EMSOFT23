@@ -18,6 +18,8 @@ let rec instantiate e =
       E_app(instantiate e1,instantiate e2)
   | E_if(e1,e2,e3) ->
       E_if(instantiate e1,instantiate e2,instantiate e3)
+  | E_match(e1,hs,e_els) ->
+      E_match(instantiate e1,List.map (fun (c,e) -> c,instantiate e) hs,instantiate e_els)
   | E_letIn(p,e1,e2) ->
      E_letIn(p,instantiate e1,instantiate e2)
   | E_lastIn(x,e1,e2) ->

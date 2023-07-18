@@ -21,7 +21,7 @@ let reserved : string -> bool =
   let tbl = Hashtbl.create 20 in
   let () = 
     List.iter (fun x -> Hashtbl.add tbl x ()) @@
-      [ "_"; "reset"; "others"; "run" ; "t_state"; "value"; "clk"; "loop"] 
+      [ "_"; "reset"; "others"; "run" ; "t_state"; "value"; "clk"; "loop"; "exit"] 
       (* todo: complete with other VHDL keywords *)
   in
   (fun x -> Hashtbl.mem tbl x)
@@ -147,10 +147,15 @@ and pp_a fmt = function
 | A_letIn(x,a1,a2) ->
    fprintf fmt "@[%a := %a;@,%a@]" pp_ident x pp_a a1 pp_a a2
 | A_tuple aas -> pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " & ") pp_a fmt aas
-| A_string_get(s,i) -> fprintf fmt
-    "@[%a(to_integer(unsigned(%s&\"000\")) to to_integer(unsigned(%s&\"000\"))+7)@]" pp_ident s i i
+| A_string_get(s,i) ->
+    fprintf fmt "@[%a(to_integer(unsigned(%s&\"000\")) to to_integer(unsigned(%s&\"000\"))+7)@]" pp_ident s i i
 | A_buffer_get(xb,idx) ->
-    fprintf fmt  "%a(to_integer(unsigned(%a)))" pp_ident xb pp_a idx
+    (match idx with
+    | A_const(Int{value=n}) ->
+        (* this case is needed to avoid a typing ambiguity in VHDL (can't resolve overload for operator "&") *)
+        fprintf fmt  "%a(%d)" pp_ident xb n
+    | _ ->
+        fprintf fmt  "%a(to_integer(unsigned(%a)))" pp_ident xb pp_a idx)
 | A_buffer_length(x,tz) ->
     fprintf fmt  "std_logic_vector(to_unsigned(%a'length,%d))" pp_ident x (size_ty tz)
 
@@ -161,16 +166,18 @@ let rec pp_s fmt = function
     fprintf fmt "@[<v 2>if %a(0) = '1' then@,%a@]" pp_a a pp_s s1;
     Option.iter (fun s2 -> fprintf fmt "@,@[<v 2>else@,%a@]" pp_s s2) so;
      fprintf fmt "@,end if;"
-| S_case(a,hs) ->
+| S_case(a,hs,so) ->
     fprintf fmt "@[<v>case %a is@," pp_a a;
     List.iter (fun (c,s) -> fprintf fmt "@[<v 2>when %a =>@,%a@]@," pp_c c pp_s s) hs;
+    Option.iter (fun s ->
+      fprintf fmt "@[<v 2>when others =>@,%a@]@,"  pp_s s) so;
     fprintf fmt "@]end case;";
 | S_set(Delayed,x,a) -> fprintf fmt "@[<v>%a <= %a;@]" pp_ident x pp_a a
 | S_set(Immediate,x,a) -> fprintf fmt "@[<v>%a := %a;@]" pp_ident x pp_a a
 
 | S_buffer_set(_,_,x1,x2,x3) ->
     fprintf fmt
-    "@[%a(to_integer(unsigned(%a))) := %a;@]" pp_ident x1 pp_ident x2 pp_ident x3
+    "@[%a(to_integer(unsigned(%a))) <= %a;@]" pp_ident x1 pp_ident x2 pp_ident x3
 
 | S_seq(s1,s2) -> fprintf fmt "@[<v>%a@,%a@]" pp_s s1 pp_s s2
 | S_letIn(x,a,s) -> fprintf fmt "@[<v>%a := %a;@,%a@]" pp_ident x pp_a a pp_s s
@@ -207,7 +214,9 @@ let rec list_let_bindings (ts,s) =
   | S_buffer_set(Delayed,_,_,_,_) -> []
   | S_if(_,s1,so) -> accum s1 @ (match so with None -> [] | Some s2 -> accum s2)
   | S_seq(s1,s2) -> accum s1 @ accum s2
-  | S_case(_,hs) -> List.map (fun (_,s) -> accum s) hs |> List.concat
+  | S_case(_,hs,so) -> 
+      (List.map (fun (_,s) -> accum s) hs |> List.concat)
+      @ (match so with None -> [] | Some s2 -> accum s2)
   | S_letIn(x,_,s) -> x::accum s
   | S_return _ -> []
   | S_fsm(_,_,ts,s,b) ->
@@ -339,9 +348,13 @@ architecture rtl of %a is@,@[<v 2>@," pp_ident name;
 
   Hashtbl.iter (fun x t ->
       if x <> result && x <> argument then
-        if not (List.mem x vars) then
+        if not (List.mem x vars) && not (List.mem_assoc x statics) then
           fprintf fmt "signal %a : %a;@," pp_ident x pp_ty t
     ) typing_env;
+
+  List.iter (fun (x,Static_array(c,n)) ->
+          fprintf fmt "signal %a : array_value_%d(0 to %d);@," pp_ident x (size_const c) (n-1);
+    ) statics;
 
   fprintf fmt "@,@[<v 2>begin@,@[<v 2>process(reset, clk)@,";
 
@@ -353,7 +366,7 @@ architecture rtl of %a is@,@[<v 2>@," pp_ident name;
       | Some s -> Hashtbl.replace var_decls n (x::s)
     in
     Hashtbl.iter (fun x t ->
-        if x <> result && x <> argument then
+        if x <> result && x <> argument && not (List.mem_assoc x statics) then
           if (List.mem x vars) then
             add_var x (size_ty t)
       ) typing_env;

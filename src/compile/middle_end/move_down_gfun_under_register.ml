@@ -10,6 +10,8 @@ let map_under_register f e =
         e
     | E_if(e1,e2,e3) ->
         E_if(aux e1, aux e2, aux e3)
+    | E_match(e,hs,e_els) ->
+        E_match(aux e,List.map (fun (c,e) -> c,aux e) hs,aux e_els)
     | E_letIn(p,e1,e2) ->
         E_letIn(p,aux e1,aux e2)
     | E_app(e1,e2) ->

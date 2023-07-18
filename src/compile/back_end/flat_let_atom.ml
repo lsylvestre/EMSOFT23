@@ -38,10 +38,10 @@ let rec flat_s = function
     let bs,a' = flat a in
     s_let_bindings bs @@
     S_if(a', flat_s s1,Option.map flat_s so)
-| S_case(a,hs) ->
+| S_case(a,hs, so) ->
     let bs,a' = flat a in
     s_let_bindings bs @@
-    S_case(a',List.map (fun (x,s) -> x,flat_s s) hs)
+    S_case(a',List.map (fun (x,s) -> x,flat_s s) hs,Option.map flat_s so)
 | S_set(w,x,a) ->
    let bs,a' = flat a in
    s_let_bindings bs @@ S_set(w,x,a')

@@ -5,8 +5,8 @@ type ty =                (** type *)
   | T_tuple of ty list   (** type constructor for tuples *)
   | T_fun of {
       arg:ty ;  (** functional type constructor annotated with a response time [dur] *)
-      dur:ty ;  (* [arg -(dur)-> ret] is the type of a function that, given a value of *)
-      ret:ty    (* type [arg], produdes a value of type [ret] after no more than [dur] clock tick *)
+      dur:ty ;  (* [arg -(dur)-> ret] is the type of a function which, given a value of *)
+      ret:ty    (* type [arg], produces a value of type [ret] after no more than [dur] clock ticks *)
     }
   | T_array of ty (* dynamic array of elements of type [ty] *)
   | T_string of ty (** string parameterized by its size using a the size type [ty] *)
@@ -84,6 +84,7 @@ type e =                      (** expression     [e]                     *)
   | E_tuple of e list         (** tuple          [e1, ... en]            *)
   | E_letIn of p * e * e      (** let-bindings   [let p = e1 in e2]      *)
   | E_if of e * e * e         (** conditional    [if e1 then e2 else e3] *)
+  | E_match of e * (c * e) list * e (** switch/case    [match e with | c -> e | ... | _ -> e] *)
   | E_fun of p * e            (** function       [fun p -> e]            *)
   | E_fix of x * (p * e)      (** recursive function [fix (fun p -> e)]  *)
   | E_reg of v * e            (** register       [reg f last e]          *)
@@ -182,13 +183,13 @@ let rec un_annot (e:e) : e =
   | E_app(E_const(Op(TyConstr _)),e) -> un_annot e
   | e -> e
 
-(** [evaluated e] returns [true] if [e] is a constant *)
+(** [is_constant e] returns [true] iff [e] is a constant *)
 let is_constant (e:e) : bool =
   match un_annot e with
   | E_const _ -> true
   | _ -> false
 
-(** [evaluated e] returns [true] if [e] is a variable *)
+(** [is_variable e] returns [true] iff [e] is a variable *)
 let is_variable (e:e) : bool =
   match un_annot e with
   | E_var _ -> true
@@ -201,7 +202,7 @@ let as_variable (e:e) : x =
   | E_var x -> x
   | _ -> invalid_arg "as_variable"
 
-(** [evaluated e] returns [true] if [e] is a value *)
+(** [evaluated e] returns [true] iff [e] is a value *)
 let rec evaluated (e:e) : bool =
   match un_annot e with
   | E_const _ | E_fun _ | E_fix _ -> true

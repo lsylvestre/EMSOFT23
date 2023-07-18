@@ -21,6 +21,7 @@ open Ast_subst
       | xc xc
       | (px,px ... px)
       | if xc then e else e
+      | match xc with c -> e | ... | _ -> e
       | let x = e in e               ;; <-- no pattern [p] any more
       | reg x last xc
       | (exec e xc)^id
@@ -44,6 +45,8 @@ let rec combinatorial = function
 | E_const c -> true
 | E_if(e1,e2,e3) ->
     combinatorial e1 && combinatorial e2 && combinatorial e3
+| E_match(e1,hs,e_els) ->
+    combinatorial e1 && List.for_all (fun (_,e) -> combinatorial e) hs && combinatorial e_els
 | E_app(E_var _,e1)
 | E_app(E_fix _,e1) -> false
 | E_app(E_const(Op op),e2) ->
@@ -98,6 +101,8 @@ let rec matching e =
          E_app(matching e1,px)
   | E_if(px,e1,e2) ->
       E_if(px,matching e1,matching e2)
+    | E_match(px,hs,e_els) ->
+      E_match(px,List.map (fun (c,e) -> c,matching e) hs,matching e_els)
   | E_letIn(P_unit,E_var _,e2) ->
       matching e2
   | E_letIn(P_var z,e1,e2) ->

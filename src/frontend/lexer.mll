@@ -31,7 +31,10 @@
        "default",  DEFAULT;
        "buffer_make", BUFFER_MAKE;
        "var", VAR;
-       "static", STATIC
+       "static", STATIC;
+       "match", MATCH;
+       "with", WITH;
+       "end", END
      ]
 
 
@@ -60,6 +63,7 @@ rule token = parse
 | "<-"                { LEFT_ARROW }
 | "->"                { RIGHT_ARROW }
 | "=>"                { IMPLY }
+| "|"                 { PIPE }
 | "||"                { PIPE_PIPE }
 | (['0'-'9']+) as n  { INT_LIT (int_of_string n) }
 | "+"                 { PLUS }

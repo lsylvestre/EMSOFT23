@@ -13,6 +13,8 @@ let rec name e =
       E_letIn(P_var f,E_fix(f,(x,name e1)), E_var f)
   | E_if(e1,e2,e3) ->
       E_if(name e1,name e2,name e3)
+  | E_match(e,hs,e_els) ->
+      E_match(name e,List.map (fun (c,e) -> c,name e) hs,name e_els)
   | E_letIn(p,E_fun(p2,e1),e2) ->
       E_letIn(p,E_fun(p2,name e1),name e2)
   | E_letIn((P_var f) as p,E_fix(g,(p2,e1)),e2) ->

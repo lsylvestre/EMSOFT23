@@ -13,6 +13,7 @@
 %token SHARP_PIPE_LBRACKET PIPE_RBRACKET
 %token FUN AMP DOT REGISTER EXEC LAST DEFAULT BUFFER_MAKE
 %token NODE IMPLY
+%token MATCH WITH PIPE END
 %token LET REC AND IN IF THEN ELSE FIX VAR
 %token <string> IDENT TVAR_IDENT
 %token <bool> BOOL_LIT
@@ -228,6 +229,21 @@ lexp_desc:
         { let (p,e1) = enforce_node b in
           E_letIn(p,e1,e2) }
 
+| MATCH e=exp WITH 
+PIPE? cases=match_case*
+IDENT RIGHT_ARROW otherwise=exp END 
+  { E_match(e,cases,otherwise) }
+(*{
+      let x = gensym () in
+      E_letIn(P_var x,e, List.fold_right (fun (c,e) els -> 
+              E_if(E_app(E_const(Op(Eq)),E_tuple[E_var x;E_const(c)]),e,els)
+      ) cases otherwise) 
+    }*)
+
+match_case:
+| c=const RIGHT_ARROW e=exp PIPE { (c,e) }
+
+
 ret_ty_annot_eq:
 | EQ { None }
 | COL ty=ty EQ { Some ty }
@@ -254,7 +270,7 @@ app_exp_desc:
 | x=IDENT LEFT_ARROW e=aexp { E_set(x,e) }
 | x=IDENT LBRACKET e1=exp RBRACKET { E_static_array_get(x,e1) }
 | x=IDENT DOT_LENGTH { E_static_array_length x }
-| x=IDENT LBRACKET e1=exp RBRACKET LEFT_ARROW e2=aexp { E_static_array_set(x,e1,e2) }
+| x=IDENT LBRACKET e1=exp RBRACKET LEFT_ARROW e2=app_exp { E_static_array_set(x,e1,e2) }
 | e1=aexp e2=aexp { E_app(e1,e2) }
 | MINUS e1=aexp { E_app(E_const(Op(Sub)),E_tuple[E_const(Int(0,Typing.unknown()));e1]) }
 | e1=app_exp op=binop e2=app_exp

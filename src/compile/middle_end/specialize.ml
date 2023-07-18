@@ -41,6 +41,8 @@ let rec specialize ds e =
   | E_app(e1,e2) ->  E_app(specialize ds e1,e2)
   | E_if(e1,e2,e3) ->
       E_if(specialize ds e1,specialize ds e2,specialize ds e3) (* ds1, ds2 and ds3 disjoint *)
+  | E_match(e,hs,e_els) ->
+      E_match(specialize ds e,List.map (fun (c,e) -> c,specialize ds e) hs,specialize ds e_els)
   | E_letIn(p,e1,e2) ->
       E_letIn(p,specialize ds e1,specialize ds e2)
   | E_tuple(es) ->

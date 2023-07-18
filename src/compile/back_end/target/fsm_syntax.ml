@@ -47,7 +47,7 @@ type write = Delayed | Immediate
 type s = S_return of a
   | S_continue of x * a * int option (* None = continue sans changer d'instance (i.e. appel récursif terminal) *)
   | S_if of a * s * s option
-  | S_case of a * (c * s) list
+  | S_case of a * (c * s) list * s option
   | S_set of write * x * a
   | S_buffer_set of write * ty * x * x * x
   | S_seq of s * s
@@ -138,9 +138,10 @@ module Debug = struct
       fprintf fmt "@[<v 2>if %a(0) = '1' then@,%a@]@," pp_a a pp_s s;
       Option.iter (fun s' ->
         fprintf fmt "@[<v 2>else@,%a@]@,end if;" pp_s s') so
-  | S_case(a,hs) ->
+  | S_case(a,hs,so) ->
       fprintf fmt "@[<v>case %a is@," pp_a a;
       List.iter (fun (c,s) -> fprintf fmt "@[<v 2>when %a =>@,%a@]@," pp_c c pp_s s) hs;
+      Option.iter (fun s -> fprintf fmt "@[<v 2>when others => %a@]@," pp_s s) so;
       fprintf fmt "@]end case;";
   | S_set(w,x,a) ->
       let op = match w with Delayed -> "<=" | Immediate -> ":=" in

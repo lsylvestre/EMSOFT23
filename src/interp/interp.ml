@@ -162,6 +162,16 @@ let rec red (e,r) =
      | (e',r') ->
         (* [If-pause] *)
         E_if(e',e1,e2),r')
+  | E_match(e,hs,e_els) ->
+     (match red (e,r) with
+      | (E_const c,r') -> 
+         (* [Match-select] *)
+         (match List.assoc_opt c hs with
+          | None -> red (e_els,r')
+          | Some ei -> red (ei,r'))
+      | (e',r') -> 
+         (* [Match-pause] *)
+         E_match(e',hs,e_els),r')
   | E_letIn(p,e1,e2) ->
     let e1',r' = red (e1,r) in
     if evaluated e1'
@@ -171,7 +181,6 @@ let rec red (e,r) =
       (E_letIn(p,e1',e2),r')
   | E_tuple es ->
       let es',r' = List.fold_right (fun e (acc,r) -> let e',r' = red (e,r) in (e'::acc),r') es ([],r) in
-      (* fprintf fmt "%a ~> %a\n" Ast_pprint.pp_exp  (E_tuple es) Ast_pprint.pp_exp (E_tuple es') ; *)
       E_tuple es',r'
   | E_app(e1,e2) ->
       let e2',r' = red (e2,r) in

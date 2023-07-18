@@ -57,6 +57,9 @@ let lifting ~statics ~decls (env:env) (e:e) : e =
     | E_if(exc1,e2,e3) ->
         assert (Anf.is_xc exc1);
         E_if(exc1, lift env e2, lift env e3)
+    | E_match(e1,hs,e_els) ->
+      assert(Anf.is_xc e1);
+      E_match(e1,List.map (fun (c,e) -> c,lift env e) hs,lift env e_els)
     | E_letIn(P_var f,(E_fun(p,e1) as phi),e2) ->
         let e1' = lift env e1 in
         let xs = fv ~statics ~decls phi in
@@ -149,6 +152,11 @@ let globalize (e:e) : ((x * e) list * e) =
         let ds2,e2' = glob e2 in
         let ds3,e3' = glob e3 in
         ds2@ds3,E_if(xc1,e2',e3') (* ds2 and ds3 disjoint *)
+    | E_match(e1,hs,e_els) ->
+      assert(Anf.is_xc e1);
+      let dss,hs' = List.split @@ List.map (fun (c,e) -> let ds,e' = glob e in ds,(c,e')) hs in
+      let ds,e_els' = glob e_els in
+      List.concat dss@ds, E_match(e1,hs',e_els')
     | E_letIn(p,e1,e2) ->
         let ds1,e1' = glob e1 in
         let ds2,e2' = glob e2 in

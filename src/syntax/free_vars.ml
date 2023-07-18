@@ -12,6 +12,8 @@ let fv ?(xs=SMap.empty) e =
       SMap.empty
   | E_if(e1,e2,e3) ->
       aux xs e1 ++ aux xs e2 ++ aux xs e3
+  | E_match(e,hs,e_els) ->
+      aux xs e ++ List.fold_left (fun acc (_,e) -> aux xs e) SMap.empty hs ++ aux xs e_els
   | E_letIn(p,e1,e2) ->
       let ys = vars_of_p p in
       let xs' = xs++ys in

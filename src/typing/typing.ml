@@ -342,6 +342,8 @@ let rec non_expansive = function
       | _ -> false)
   | E_if(e1,e2,e3) ->
       non_expansive e1 && non_expansive e2 && non_expansive e3
+  | E_match(e1,hs,e_els) ->
+      non_expansive e1 && List.for_all (fun (_,e) -> non_expansive e) hs && non_expansive e_els
   | E_tuple es ->
       List.for_all non_expansive es
   | E_letIn(_,e1,e2) ->
@@ -349,6 +351,7 @@ let rec non_expansive = function
   | _ -> true
 
 exception Functional
+
 let rec contain_fun t =
   match t with
   | T_const _ -> ()
@@ -431,6 +434,13 @@ let rec typ_exp ~toplevel ~loc (g:env) e =
       let t = t3 in
       check_conditional_shape ~loc e t;
       (t,Response_time.(add n1 (max n2 n3)))
+  | E_match(e1,hs,e_els) ->
+      let t1,n1 = typ_exp ~toplevel:false ~loc g e1 in
+      List.iter (fun (c,_) -> unify ~loc (typ_const ~loc c) t1) hs;
+      let t_els,n_els = typ_exp ~toplevel:false ~loc g e_els in
+      let ns = List.map (fun (_,ei) -> let t,n = typ_exp ~toplevel:false ~loc g ei in unify ~loc t_els t; n) hs in
+      let n = Response_time.add n1 (List.fold_left Response_time.max n_els ns) in
+      t_els,n
   | E_tuple(es) ->
       let ts,ns = List.split @@ List.map (typ_exp ~toplevel:false ~loc g) es in
       let n = List.fold_left Response_time.add Response_time.zero ns in

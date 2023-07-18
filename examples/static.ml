@@ -15,7 +15,7 @@
 *)
 
 
-let static a = (42:16)^10 ;;
+let static a = (42:int<16>)^10 ;;
 
 let rec loop (s,i) =
   if i < a.length

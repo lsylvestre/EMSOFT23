@@ -22,6 +22,8 @@ let rec remove_deco e =
       E_fix(f,(x,remove_deco e1))
   | E_if(e1,e2,e3) ->
       E_if(remove_deco e1,remove_deco e2,remove_deco e3)
+  | E_match(e,hs,e_els) ->
+      E_match(remove_deco e,List.map (fun (c,e) -> c,remove_deco e) hs,remove_deco e_els)
   | E_letIn(x,e1,e2) ->
       E_letIn(x,remove_deco e1,remove_deco e2)
   | E_tuple(es) ->

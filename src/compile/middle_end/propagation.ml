@@ -21,6 +21,8 @@ let rec prop e =
       e
   | E_if(e1,e2,e3) ->
       E_if(prop e1,prop e2,prop e3)
+  | E_match(e,hs,e_els) ->
+      E_match(prop e,List.map (fun (c,e) -> c,prop e) hs,prop e_els)
   | E_letIn(p,((E_tuple es) as e),e2) when List.for_all constant_or_copy es ->
       incr nb_modif;
       prop (subst_p_e p e e2)

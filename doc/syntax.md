@@ -90,9 +90,9 @@ let rec x p : ty = e1 in e2      (* equivalent to [let x = fix x (fun p -> (e1 :
 
 ## Informal semantics
 
-All constructs react instantaneously except tail-recursive calls (that pause until the next clock tick) and call to asynchronous primitives like `array_make` (that take several instant).
+All constructs react instantaneously except tail-recursive calls (that pause until the next clock tick) and call to asynchronous primitives like `array_make` (that take several instants).
 
 ## Functional features
 - Functions can take functions as parameters but cannot return functions. Partial application is not supported.
-- Tuples cannot contain functions (except for argument passing)
+- Tuples cannot contain functions (except for parameter passing)
 - Only tail-recursion is supported.

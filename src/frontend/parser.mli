@@ -2,6 +2,7 @@
 (* The type of tokens. *)
 
 type token = 
+  | WITH
   | VAR
   | TVAR_IDENT of (string)
   | TIMES
@@ -19,12 +20,14 @@ type token =
   | PLUS
   | PIPE_RBRACKET
   | PIPE_PIPE
+  | PIPE
   | OR
   | NOT
   | NODE
   | NEQ
   | MOD
   | MINUS
+  | MATCH
   | LT
   | LPAREN
   | LET
@@ -47,6 +50,7 @@ type token =
   | EQ_EQ
   | EQ
   | EOF
+  | END
   | ELSE
   | DOT_LENGTH
   | DOT
