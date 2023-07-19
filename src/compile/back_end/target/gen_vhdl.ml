@@ -48,7 +48,7 @@ let pp_ident fmt (x:x) : unit =
 (** code generator for constants *)
 let pp_c fmt c =
   match c with
-  | Unit -> fprintf fmt "\"1\""
+  | Unit -> fprintf fmt "mixc_unit"
   | Int {value=n;tsize} ->
       let v = Printf.sprintf "%x" n in
       let l_pad = size_ty tsize - String.length v * 4 in
@@ -57,7 +57,9 @@ let pp_c fmt c =
         assert false (** should not happen ! *)
       end;
       fprintf fmt "\"%s\" & X\"%s\"" (String.make l_pad '0') v
-  | Bool b -> fprintf fmt "\"%d\"" (if b then 1 else 0)
+  | Bool b ->
+      (* notice: in VHDL, mixc_true(0) is valid, but "1"(0) is invalid. *)
+      fprintf fmt "%s" (if b then "mixc_true" else "mixc_false")
   | Enum x -> pp_ident fmt x
   | String s -> fprintf fmt "of_string(\"%s\")" s
 

@@ -27,7 +27,8 @@ let rec combinatorial (e:e) : bool =
 	| E_if(e1,e2,e3) ->
 	    combinatorial e1 && combinatorial e2 && combinatorial e3
 	| E_match(e1,hs,e_els) ->
-      combinatorial e1 && List.for_all (fun (_,e) -> combinatorial e) hs && combinatorial e_els
+      (* hard to defined as a combinatorial function being generic in the number of cases *)
+      false
 	| E_app(E_const(Op op),e2) ->
 	    op_combinatorial op && combinatorial e2
 	| E_app(e1,e2) ->

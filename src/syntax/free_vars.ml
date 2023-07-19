@@ -12,24 +12,26 @@ let fv ?(xs=SMap.empty) e =
       SMap.empty
   | E_if(e1,e2,e3) ->
       aux xs e1 ++ aux xs e2 ++ aux xs e3
-  | E_match(e,hs,e_els) ->
-      aux xs e ++ List.fold_left (fun acc (_,e) -> aux xs e) SMap.empty hs ++ aux xs e_els
+  | E_match(e1,hs,e_els) ->
+      aux xs e1 ++ 
+      List.fold_left (fun acc (c,ei) -> (acc ++ aux xs ei)) SMap.empty hs ++ 
+      aux xs e_els
   | E_letIn(p,e1,e2) ->
       let ys = vars_of_p p in
-      let xs' = xs++ys in
+      let xs' = xs ++ ys in
       aux xs e1 ++ aux xs' e2
   | E_app(e1,e2) ->
       aux xs e1 ++ aux xs e2
-  | E_fun(p,e) ->
+  | E_fun(p,e1) ->
       let ys = vars_of_p p in
       let xs' = xs++ys in
-      aux xs' e
+      aux xs' e1
   | E_fix(f,(p,e)) ->
       let ys = vars_of_p p in
       let xs' = SMap.add f () @@ (xs++ys) in
       aux xs' e
   | E_tuple(es) ->
-      List.fold_left (fun acc e -> acc ++ aux xs e) SMap.empty es
+      List.fold_left (fun acc ei -> acc ++ aux xs ei) SMap.empty es
   | E_reg(V ev, e0) ->
       aux xs ev ++ aux xs e0
   | E_exec(e1,e2,_k) ->
@@ -39,15 +41,13 @@ let fv ?(xs=SMap.empty) e =
       let xs' = SMap.add x () xs in
       aux xs e1 ++ aux xs' e2
   | E_set(x,e1) ->
-      aux (SMap.add x () xs) e1
+      SMap.add x () @@ aux xs e1
   | E_static_array_get(x,e1) ->
-      let xs' = (SMap.add x () xs) in
-      aux  xs' e1
+      SMap.add x () @@ aux xs e1
   | E_static_array_length(x) ->
-      SMap.add x () xs
+      SMap.singleton x ()
   | E_static_array_set(x,e1,e2) ->
-      let xs' = (SMap.add x () xs) in
-      aux  xs' e1 ++ aux  xs' e2
+      SMap.add x () @@ (aux xs e1 ++ aux xs e2)
   | E_step(e1,_k) ->
       (* _k is in a different name space than variables *)
       aux xs e1

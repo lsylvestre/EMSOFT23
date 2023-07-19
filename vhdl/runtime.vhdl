@@ -5,6 +5,9 @@ use ieee.numeric_std.all;
 
 package runtime is
     alias value is std_logic_vector;
+    constant mixc_true : value(0 to 0) := "1";
+    constant mixc_false : value(0 to 0)  := "0";
+    constant mixc_unit : value(0 to 0)  := "1";
     function mixc_add  (arg: value)  return value;
     function mixc_sub  (arg: value)  return value;
     function mixc_mult (arg: value)  return value;

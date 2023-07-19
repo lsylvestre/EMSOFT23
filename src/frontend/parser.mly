@@ -233,12 +233,6 @@ lexp_desc:
 PIPE? cases=match_case*
 IDENT RIGHT_ARROW otherwise=exp END 
   { E_match(e,cases,otherwise) }
-(*{
-      let x = gensym () in
-      E_letIn(P_var x,e, List.fold_right (fun (c,e) els -> 
-              E_if(E_app(E_const(Op(Eq)),E_tuple[E_var x;E_const(c)]),e,els)
-      ) cases otherwise) 
-    }*)
 
 match_case:
 | c=const RIGHT_ARROW e=exp PIPE { (c,e) }

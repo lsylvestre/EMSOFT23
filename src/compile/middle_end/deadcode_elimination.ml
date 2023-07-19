@@ -1,22 +1,23 @@
 open Ast
 
-(* assume that each function name is unique *)
+(* assumes that each function is global, each function name being unique *)
 
-let rec ds_inclusion ds ds_keeped =
-  match ds_keeped with
-  | [] -> []
-  | (x,e)::ds_keeped' ->
-      let ds_called_by_e = ds_inclusion ds ds_keeped' in
-      (* todo: and if [ds_called_by_e] contain x ? *)
-      (x,e)::ds_called_by_e
-
-and deadcode_elim_ds (ds,e) =
+let ds_called_by ds (x,e) =
   let xs = Free_vars.fv e in
-  let ds_called_by_e = List.filter (fun (y,_) -> Ast.SMap.mem y xs) ds in
-  ds_inclusion ds ds_called_by_e
+  SMap.filter (fun y _ -> Ast.SMap.mem y xs && x <> y) ds
 
-
+let rec deadcode_elim_ds ds (x,e) =
+  let ds_keeped = ds_called_by ds (x,e) in
+  SMap.fold (fun x e acc ->
+               deadcode_elim_ds ds (x,e) ++
+               SMap.add x e acc) ds_keeped SMap.empty
+ 
 let deadcode_elimination_pi pi =
-  let ds = deadcode_elim_ds (pi.ds,pi.main) in
+  let name_entry_point = gensym () in 
+  (** this name does not appear in the program after transformation. 
+      It is used internally to avoid code-duplication: the entry_point 
+      is treated in the same way as other declarations [ds] *)
+  let ds_keeped = deadcode_elim_ds (smap_of_list @@ pi.ds) (name_entry_point,pi.main) in
+  let ds = List.filter (fun (x,_) -> SMap.mem x ds_keeped) pi.ds in
   { pi with ds }
 
