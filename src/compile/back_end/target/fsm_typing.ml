@@ -95,7 +95,7 @@ let typing_c = function
 
 let rec typing_op h t op =
     match op with
-     | (Add|Sub|Mult|Div|Mod) ->
+     | (Add|Sub|Mult|Div|Mod|Land|Lor|Lxor|Lsl|Lsr|Asr) ->
        let tz = new_tvar () in
        unify (TTuple [TInt tz;TInt tz]) t;
        TInt tz
@@ -103,10 +103,11 @@ let rec typing_op h t op =
        let tz = new_tvar () in
        unify (TTuple [TInt tz;TInt tz]) t;
        TBool
-     | (And|Or) ->
+     | (And|Or|Xor) ->
          unify (TTuple [TBool;TBool]) t;
          TBool
-     | Not -> unify t TBool; TBool
+     | Not ->
+        unify t TBool; TBool
      | If ->
          let a = new_tvar () in
          unify (TTuple [TBool;a;a]) t;

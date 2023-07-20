@@ -43,7 +43,7 @@ type l = string         (** location (i.e., pointer) [l] *)
 type c =                (** constant [c] *)
   | Unit                (** unit value [()] *)
   | Bool of bool        (** boolean [true | false] *)
-  | Int of int * ty     (** signed integer [n] of given size *)
+  | Int of int * ty     (** integer [n] of given size *)
   | String of string    (** string [s] *)
   | Op of op            (** primitive [op] *)
   | External of extern  (** asynchronous primitive *)
@@ -51,9 +51,10 @@ type c =                (** constant [c] *)
 
 and op = (** primitives *)
        (* instantaneous primitives *)
-         Add | Sub | Mult | Div | Mod
+         Add | Sub | Mult | Div | Mod (* signed operations *)
        | Lt | Le | Gt | Ge | Eq | Neq
-       | And | Or | Not | Abs
+       | And | Or | Xor | Not | Abs
+       | Land | Lor | Lxor | Lsl | Lsr | Asr
        | GetTuple of {
             pos : int ;   (* indice of the projection to access *)
             arity : int   (* size (i.e. number of projections) of the tuple *)

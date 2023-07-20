@@ -2,6 +2,7 @@
 (* The type of tokens. *)
 
 type token = 
+  | XOR
   | WITH
   | VAR
   | TVAR_IDENT of (string)
@@ -28,13 +29,18 @@ type token =
   | MOD
   | MINUS
   | MATCH
+  | LXOR
   | LT
+  | LSR
+  | LSL
   | LPAREN
+  | LOR
   | LET
   | LEFT_ARROW
   | LE
   | LBRACKET
   | LAST
+  | LAND
   | INT_LIT of (int)
   | IN
   | IMPLY
@@ -60,6 +66,7 @@ type token =
   | COL
   | BUFFER_MAKE
   | BOOL_LIT of (bool)
+  | ASR
   | AND
   | AMP_AMP
   | AMP

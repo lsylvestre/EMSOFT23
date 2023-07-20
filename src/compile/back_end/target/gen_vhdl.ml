@@ -21,7 +21,7 @@ let reserved : string -> bool =
   let tbl = Hashtbl.create 20 in
   let () = 
     List.iter (fun x -> Hashtbl.add tbl x ()) @@
-      [ "_"; "reset"; "others"; "run" ; "t_state"; "value"; "clk"; "loop"; "exit"] 
+      [ "_"; "reset"; "others"; "run" ; "value"; "clk"; "loop"; "exit"] 
       (* todo: complete with other VHDL keywords *)
   in
   (fun x -> Hashtbl.mem tbl x)
@@ -77,9 +77,16 @@ let pp_op fmt = function
 | Ge -> fprintf fmt "mixc_ge"
 | And -> fprintf fmt "mixc_and"
 | Or -> fprintf fmt "mixc_or"
+| Xor -> fprintf fmt "mixc_xor"
 | Not -> fprintf fmt "mixc_not"
 | Div -> fprintf fmt "mixc_div"
 | Mod -> fprintf fmt "mixc_mod"
+| Land -> fprintf fmt "mixc_land"
+| Lor -> fprintf fmt "mixc_lor"
+| Lxor -> fprintf fmt "mixc_lxor"
+| Lsl -> fprintf fmt "mixc_lsl"
+| Lsr -> fprintf fmt "mixc_lsr"
+| Asr -> fprintf fmt "mixc_asr"
 | TyConstr _ -> fprintf fmt "mixc_id"
 | To_string -> fprintf fmt "mixc_to_string"
 | GetTuple (i,_,_) -> assert false (* special case, defined below (see tuple_access) *)

@@ -21,7 +21,8 @@ type op = If (* i.e., a multiplexer *)
         | Add | Sub | Mult
         | Lt | Gt | Le | Ge | Eq | Neq
         | Div | Mod
-        | And | Or | Not
+        | And | Or | Xor | Not
+        | Lxor | Land | Lor | Lsl | Lsr | Asr
         | GetTuple of
             (* (pos,arity,ty) *)
             (* ty is the type of the value from which a field is extracted  *)
@@ -100,10 +101,17 @@ module Debug = struct
   | Ge -> fprintf fmt "mixc_ge"
   | And -> fprintf fmt "mixc_and"
   | Or -> fprintf fmt "mixc_or"
+  | Xor  -> fprintf fmt "mixc_lxor"
   | Not -> fprintf fmt "mixc_not"
   | Neq -> fprintf fmt "mixc_neq"
   | Div -> fprintf fmt "mixc_div"
   | Mod -> fprintf fmt "mixc_mod"
+  | Lxor  -> fprintf fmt "mixc_lxor"
+  | Land -> fprintf fmt "mixc_land"
+  | Lor -> fprintf fmt "mixc_lor"
+  | Lsl -> fprintf fmt "mixc_lsl"
+  | Lsr -> fprintf fmt "mixc_lsr"
+  | Asr -> fprintf fmt "mixc_asr"
   | GetTuple (i,_,_) -> fprintf fmt "mixc_get_%d" i
   | To_string -> fprintf fmt "mixc_simul_to_string"
   | TyConstr _ -> fprintf fmt "mixc_id"

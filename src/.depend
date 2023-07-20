@@ -230,13 +230,11 @@ src/compile/middle_end/let_floating.cmx : \
     src/syntax/ast.cmx
 src/compile/middle_end/matching.cmo : \
     src/syntax/map_pi.cmo \
-    src/compile/combinatorial.cmo \
     src/syntax/ast_undecorated.cmo \
     src/syntax/ast_subst.cmo \
     src/syntax/ast.cmo
 src/compile/middle_end/matching.cmx : \
     src/syntax/map_pi.cmx \
-    src/compile/combinatorial.cmx \
     src/syntax/ast_undecorated.cmx \
     src/syntax/ast_subst.cmx \
     src/syntax/ast.cmx

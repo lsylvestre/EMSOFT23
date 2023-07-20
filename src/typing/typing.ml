@@ -276,7 +276,7 @@ let ty_op ~loc = function
 | Abs ->
     let tz = unknown() in
     fun_ty (tint tz) (T_size 0) (tint tz)
-| Add|Sub|Mult|Div|Mod ->
+| Add|Sub|Mult|Div|Mod|Land|Lor|Lxor|Lsl|Lsr|Asr ->
     let tz1 = unknown() in
     fun_ty (T_tuple[tint tz1;tint tz1]) (T_size 0) (tint tz1)
 | Lt|Gt|Le|Ge|Eq|Neq ->
@@ -284,7 +284,7 @@ let ty_op ~loc = function
     fun_ty (T_tuple[tint tz1;tint tz1]) (T_size 0) tbool
 | Not ->
     fun_ty tbool (T_size 0) tbool
-| And|Or ->
+| And|Or|Xor ->
     fun_ty (T_tuple[tbool;tbool]) (T_size 0) tbool
 | Print ->
     fun_ty (unknown()) (T_size 0) tunit

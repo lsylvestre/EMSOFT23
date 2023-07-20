@@ -22,8 +22,15 @@ package runtime is
     function mixc_if   (arg : value) return value;
     function mixc_and  (arg : value) return value;
     function mixc_or   (arg : value) return value;
+    function mixc_xor  (arg : value) return value;
     function mixc_not  (arg : value) return value;
     function mixc_id   (arg : value) return value;
+    function mixc_lor  (arg : value) return value;
+    function mixc_land (arg : value) return value;
+    function mixc_lxor (arg : value) return value;
+    function mixc_lsl (arg: value) return value;
+    function mixc_lsr (arg: value) return value;
+    -- todo add mixc_asr
     function of_string (s: string)   return value; 
     function to_string (a: std_logic_vector) return string;
     function integer_of_value(arg: value) return integer; 
@@ -156,6 +163,7 @@ package body runtime is
       end if;
       return r;
     end;
+
   function mixc_and(arg : value) return value is
     variable r : value (0 to 0);
     begin 
@@ -166,6 +174,7 @@ package body runtime is
       end if;
       return r;
     end;
+
   function mixc_or(arg : value) return value is
     variable r : value (0 to 0);
     begin 
@@ -176,6 +185,18 @@ package body runtime is
       end if;
       return r;
     end;
+
+  function mixc_xor(arg : value) return value is
+    variable r : value (0 to 0);
+    begin 
+      if (arg(0) = '1' xor arg(1) = '1') then
+        r := "1";
+      else
+        r := "0";
+      end if;
+      return r;
+    end;
+
   function mixc_not(arg : value) return value is
     variable r : value (0 to 0);
     begin 
@@ -185,6 +206,52 @@ package body runtime is
         r := "1";
       end if;
       return r;
+    end;
+
+  function mixc_lor (arg: value) return value is
+    constant length: natural := arg'length / 2;
+    variable r : signed (0 to length - 1);
+    begin
+      for i in 0 to length-1 loop
+        r(i) := arg(i) or arg(i+length);
+      end loop;
+      return value(r);
+    end;
+
+  function mixc_land (arg: value) return value is
+    constant length: natural := arg'length / 2;
+    variable r : signed (0 to length - 1);
+    begin
+      for i in 0 to length-1 loop
+        r(i) := arg(i) and arg(i+length);
+      end loop;
+      return value(r);
+    end;
+  
+  function mixc_lxor (arg: value) return value is
+    constant length: natural := arg'length / 2;
+    variable r : signed (0 to length - 1);
+    begin
+      for i in 0 to length-1 loop
+        r(i) := arg(i) xor arg(i+length);
+      end loop;
+      return value(r);
+    end;
+
+  function mixc_lsl (arg: value) return value is
+    constant length: natural := arg'length / 2;
+    variable r : unsigned (0 to length - 1);
+    begin
+      r := unsigned(arg(0 to length-1)) sll integer_of_value(arg(length to arg'length - 1));
+      return value(r);
+    end;
+
+  function mixc_lsr (arg: value) return value is
+    constant length: natural := arg'length / 2;
+    variable r : unsigned (0 to length - 1);
+    begin
+      r := unsigned(arg(0 to length-1)) srl integer_of_value(arg(length to arg'length - 1));
+      return value(r);
     end;
   function mixc_id(arg : value) return value is
     begin 

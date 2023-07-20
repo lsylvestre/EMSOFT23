@@ -34,7 +34,14 @@
        "static", STATIC;
        "match", MATCH;
        "with", WITH;
-       "end", END
+       "end", END;
+       "xor", XOR;
+       "land", LAND;
+       "lor", LOR;
+       "lxor", LXOR;
+       "lsl", LSL;
+       "lsr", LSR;
+       "asr", ASR
      ]
 
 

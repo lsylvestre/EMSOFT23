@@ -19,6 +19,7 @@
 %token <bool> BOOL_LIT
 %token <int> INT_LIT
 %token PLUS MINUS TIMES LT LE GT GE NEQ NOT MOD DIV AMP_AMP OR
+%token XOR LAND LOR LXOR LSL LSR ASR
 %token EOF
 %token SEMI_SEMI
 %token LEFT_ARROW RIGHT_ARROW
@@ -32,11 +33,13 @@
 %nonassoc LET
 %left     COMMA
 %nonassoc IF THEN ELSE
+
 %right    AMP_AMP OR
 %left     LT LE GT GE NEQ EQ
 %left     PLUS MINUS
+%right    LSL LSR ASR
 %left     TIMES
-%right    DIV MOD
+%left    DIV MOD LAND LOR LXOR
 %nonassoc DOT
 %nonassoc BOOL_LIT IDENT LPAREN
 
@@ -357,3 +360,11 @@ const:
 | NEQ        { Neq }
 | AMP        { And }
 | OR         { Or }
+| XOR        { Xor }
+| LXOR       { Lxor } 
+| LAND       { Land } 
+| LOR        { Lor } 
+| LSL        { Lsl } 
+| LSR        { Lsr }
+| ASR        { Asr }
+

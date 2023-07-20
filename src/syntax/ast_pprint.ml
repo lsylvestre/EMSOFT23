@@ -139,6 +139,13 @@ let pp_op (fmt:fmt) (op:op) : unit =
     | Mod -> pp_str "mod"
     | Div -> pp_str "/"
     | Abs -> pp_str "abs"
+    | Xor  -> pp_str "xor"
+    | Land -> pp_str "land"
+    | Lor -> pp_str "lor"
+    | Lxor -> pp_str "lxor"
+    | Lsl -> pp_str "lsl"
+    | Lsr -> pp_str "lsr"
+    | Asr -> pp_str "asr"
     | Wait n ->
         fprintf fmt "wait<%d>" n
     | GetTuple {pos=0;arity=2} ->

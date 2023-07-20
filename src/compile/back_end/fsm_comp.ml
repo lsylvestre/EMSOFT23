@@ -40,11 +40,18 @@ let to_op = function
 | Ast.Neq -> Neq
 | Ast.And -> And
 | Ast.Or -> Or
+| Ast.Xor -> Xor
 | Ast.Not -> Not
 | Ast.GetTuple {pos=i;arity=n} -> GetTuple (i,n,new_tvar())
 | Ast.Print -> assert false
 | Ast.To_string -> To_string
 | Ast.String_length -> String_length (new_tvar())
+| Ast.Lor -> Lor
+| Ast.Land -> Land
+| Ast.Lxor -> Lxor
+| Ast.Lsl -> Lsl
+| Ast.Lsr -> Lsr
+| Ast.Asr -> Asr
 | Ast.(Assert|Abs|Random|Wait _) -> assert false
 
 
