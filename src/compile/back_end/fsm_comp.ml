@@ -74,7 +74,6 @@ let rec to_a (e:Ast.e) : a =
   | Ast.E_if(e1,e2,e3) -> A_call(If,A_tuple [to_a e1;to_a e2;to_a e3])
   | Ast.E_tuple(es) -> A_tuple (List.map to_a es)
   | Ast.E_letIn(P_var x,e1,e2) -> A_letIn(x,to_a e1,to_a e2)
-  | Ast.E_static_array_get(x,e) -> A_buffer_get(x,to_a e)
   | Ast.E_static_array_length x -> A_buffer_length(x,new_tvar())
   | _ ->
       Format.fprintf Format.std_formatter "--> %a\n"  Ast_pprint.pp_exp  e; assert false
@@ -97,7 +96,7 @@ let access ~ks ~result (address:a) ~field =
     seq_ (S_set(Delayed,"avm_rm_read",A_const (Bool true))) @@
     S_continue (q,A_const Unit,None)
   in
-  (S_fsm(Ast.gensym ~prefix:"id" (),Ast.gensym ~prefix:"id" (),[t],s,true))
+  S_let_transitions([t],s)
 
 
 let assign ~ks ~result ?(value=A_const Unit) (address:a) ~field data =
@@ -114,7 +113,7 @@ let assign ~ks ~result ?(value=A_const Unit) (address:a) ~field data =
     seq_ (S_set(Delayed,"avm_rm_read",A_const (Bool true))) @@
     S_continue (q,A_const Unit,None)
   in
-  (S_fsm(Ast.gensym ~prefix:"id" (),Ast.gensym ~prefix:"id" (),[t],s,true))
+  S_let_transitions([t],s)
 
 let let_plug_s (a:a) (f : x -> s) : s =
   match a with
@@ -125,9 +124,9 @@ let let_plug_s (a:a) (f : x -> s) : s =
 
 let rec to_s ~statics ~tail x ks e =
   let return_atom a = 
-    seq_ (S_set(Immediate,x,to_a e)) ks 
+    seq_ (S_set(Immediate,x, a)) ks 
   in
-  if combinatorial e then SMap.empty,return_atom e else
+  if combinatorial e then SMap.empty,return_atom (to_a e) else
   match e with
   | E_deco _ ->
       Ast_undecorated.still_decorated e
@@ -143,7 +142,6 @@ let rec to_s ~statics ~tail x ks e =
       SMap.empty,seq_ (S_print(to_a e1)) ks
   | E_app(E_const (Op(To_string)),e1) ->
       SMap.empty,return_atom (A_call(To_string,to_a e1))
-
   | E_app(E_const (External(Array_get)),E_tuple[e1;e2]) ->
       let arr = to_a e1 in
       let idx = to_a e2 in
@@ -157,20 +155,25 @@ let rec to_s ~statics ~tail x ks e =
       let v = to_a e3 in
       SMap.empty,assign ~ks ~result:x arr ~field:idx v
 
-  | E_static_array_get(y,e1) ->
-      let idx = to_a e1 in
-      SMap.empty,let_plug_s idx (fun x1 -> return_atom @@ A_buffer_get(y,A_var x1))
-
   | E_static_array_length(y) ->
       SMap.empty,return_atom @@ A_buffer_length(y,new_tvar())
 
-  | E_static_array_set(y,e2,e3) ->
-      let idx = to_a e2 in
-      let elem = to_a e3 in
-      SMap.empty,(seq_ (let_plug_s idx (fun x2 ->
-                        let_plug_s elem (fun x3 ->
-                        S_buffer_set (Immediate,new_tvar(),y,x2,x3)))) ks)
+  | E_static_array_get(y,idx) ->
+      let a = to_a idx in
+      let q = Ast.gensym ~prefix:"pause" () in
+      let t = q, return_atom @@ A_buffer_get(y) in
+      let s = seq_ (S_setptr(y,a)) (S_continue(q,A_const Unit,None)) in
+      SMap.empty, S_let_transitions([t],s) (* true ? don't care *)
 
+
+  | E_static_array_set(y,idx,e_upd) -> 
+      let a = to_a idx in
+      let a_upd = to_a e_upd in
+      let q = Ast.gensym ~prefix:"pause" () in
+      let t = q, seq_ (S_buffer_set(y)) @@
+                 return_atom (A_const Unit) in
+      let s = seq_ (S_setptr_write(y,a,a_upd)) (S_continue(q,A_const Unit,None)) in
+      SMap.empty, S_let_transitions([t],s) (* true ? don't care *)
 
   | E_app(E_const(Op(Assert)),_) ->
       (* currently ignore assertion *)
@@ -207,7 +210,8 @@ let rec to_s ~statics ~tail x ks e =
   | E_step(e1,k) ->
       let pi = Middle_end.compile Ast.{statics;ds=[];main=e1} in
       let _,w,(ts,s) = compile ~result:k pi in
-      w,seq_ (S_fsm(Ast.gensym ~prefix:"id" (),k,ts,s,true)) ks
+      let fsm = S_fsm((Ast.gensym ~prefix:"id" ()),k,ts,s,true) in
+      w, seq_ fsm ks
   | E_par(e1,e2) ->
       let pi1 = Middle_end.compile Ast.{statics;ds=[];main=e1} in
       let pi2 = Middle_end.compile Ast.{statics;ds=[];main=e2} in
@@ -253,8 +257,12 @@ and insert_kont w (x,s) =
     | S_case(a,hs,so) -> S_case(a,List.map (fun (c,s) -> c, aux s) hs, Option.map aux so)
     | S_set _ -> s'
     | S_buffer_set _ -> s'
+    | S_setptr _
+    | S_setptr_write _ -> s'
     | S_seq(s1,s2) ->  S_seq(aux s1,aux s2)
     | S_letIn(x,a,s2) -> S_letIn(x,a,aux s2)
+    | S_let_transitions(ts,s) -> 
+        S_let_transitions(List.map (fun (x,s) -> x,aux s) ts,aux s)
     | S_fsm _ -> s' (* ok? *)
     | S_print _ -> s'
     in

@@ -25,12 +25,12 @@ let compile name ty fmt pi =
 
   Display_target.(display Fsm fsm);
 
+  let fsm = Flat_transitions.flatten fsm in
+
   let fsm = Flat_let_atom.flat_let_atom fsm in
   Display_target.(display Flat fsm);
 
   let typing_env = Fsm_typing.typing_circuit ~statics ty (result,fsm) in
-
-  (* Hashtbl.iter (fun x t -> Printf.printf "===> (%s,%s)\n" x (Fsm_typing.string_of_ty (Fsm_typing.canon t))) typing_env; *)
 
   let name = "main" in
   let state_var = "state" in

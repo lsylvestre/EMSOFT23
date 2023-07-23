@@ -12,6 +12,12 @@ src/compile/back_end/flat_let_atom.cmo : \
 src/compile/back_end/flat_let_atom.cmx : \
     src/compile/back_end/target/fsm_syntax.cmx \
     src/compile/combinatorial.cmx
+src/compile/back_end/flat_transitions.cmo : \
+    src/compile/back_end/target/fsm_syntax.cmo \
+    src/compile/combinatorial.cmo
+src/compile/back_end/flat_transitions.cmx : \
+    src/compile/back_end/target/fsm_syntax.cmx \
+    src/compile/combinatorial.cmx
 src/compile/back_end/fsm_comp.cmo : \
     src/compile/back_end/target/naming_convention.cmo \
     src/compile/middle_end.cmo \
@@ -92,6 +98,7 @@ src/compile/compile.cmo : \
     src/compile/back_end/target/fsm_typing.cmo \
     src/compile/back_end/target/fsm_syntax.cmo \
     src/compile/back_end/fsm_comp.cmo \
+    src/compile/back_end/flat_transitions.cmo \
     src/compile/back_end/flat_let_atom.cmo \
     src/compile/encode_reg_exec.cmo \
     src/compile/back_end/encode.cmo \
@@ -106,6 +113,7 @@ src/compile/compile.cmx : \
     src/compile/back_end/target/fsm_typing.cmx \
     src/compile/back_end/target/fsm_syntax.cmx \
     src/compile/back_end/fsm_comp.cmx \
+    src/compile/back_end/flat_transitions.cmx \
     src/compile/back_end/flat_let_atom.cmx \
     src/compile/encode_reg_exec.cmx \
     src/compile/back_end/encode.cmx \

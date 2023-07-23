@@ -1,4 +1,4 @@
-Each source program is a suite of definitions following the grammar above.
+Each source program is a suite of definitions following the grammar bellow.
 A function `main` must be defined among these definitions.
 
 

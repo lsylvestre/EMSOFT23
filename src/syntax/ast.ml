@@ -142,7 +142,7 @@ let group_ts (ts:ty list) : ty =
 
 let gensym : ?prefix:string -> unit -> x =
   let c = ref 0 in
-  (fun ?(prefix="$") () ->
+  (fun ?(prefix="$v") () ->
     incr c; prefix^string_of_int !c)
 
 (** associative array having key of type [string] *)

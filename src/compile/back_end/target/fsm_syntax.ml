@@ -40,7 +40,7 @@ type a = A_letIn of x * a * a
   | A_var of x
   | A_call of op * a
   | A_string_get of x * x
-  | A_buffer_get of x * a
+  | A_buffer_get of x
   | A_buffer_length of x * ty (* [ty] is the size of the resulting integer *)
 
 type write = Delayed | Immediate
@@ -50,12 +50,17 @@ type s = S_return of a
   | S_if of a * s * s option
   | S_case of a * (c * s) list * s option
   | S_set of write * x * a
-  | S_buffer_set of write * ty * x * x * x
+  | S_setptr of x * a
+  | S_setptr_write of x * a * a
+  | S_buffer_set of x
   | S_seq of s * s
   | S_letIn of x * a * s
-  | S_fsm of id * x * (x * s) list * s (* result * transition * start instruction *)
+  | S_fsm of id * x * t list * s (* result * transition * start instruction *)
                 * bool (* <- restart *)
+  | S_let_transitions of t list * s
   | S_print of a (* non synthesizable *)
+
+and t = (x * s)
 
 and id = string
   (* // ... *)
@@ -130,7 +135,7 @@ module Debug = struct
       pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ", ") pp_a fmt aas;
       fprintf fmt ")@]"
   | A_string_get(sx,ix) -> fprintf fmt "%s[%s]" sx ix
-  | A_buffer_get(x,idx) -> fprintf fmt "%s[%a]" x pp_a idx
+  | A_buffer_get(x) -> fprintf fmt "static_get_value(%s)" x
   | A_buffer_length(x,_) -> fprintf fmt "%s.length" x
 
 
@@ -154,15 +159,20 @@ module Debug = struct
   | S_set(w,x,a) ->
       let op = match w with Delayed -> "<=" | Immediate -> ":=" in
       fprintf fmt "@[<v>%s %s %a;@]" x op pp_a a
-  | S_buffer_set(w,ty_,x,idx,y) ->
-      let op = match w with Delayed -> "<=" | Immediate -> ":=" in
-      fprintf fmt "@[<v>%s(%s) %s %s;@]" x idx op y
+  | S_setptr(x,idx) ->
+      fprintf fmt "@[<v>setptr<%s>[%a];@]" x pp_a idx
+  | S_setptr_write(x,idx,a) ->
+      fprintf fmt "@[<v>(%s[%a] <- %a;@]" x pp_a idx pp_a a
+  | S_buffer_set(x) ->
+      fprintf fmt "@[<v>static_set<%s>_end;@]" x
   | S_seq(s1,s2) ->
       fprintf fmt "@[<v>%a@,%a@]" pp_s s1 pp_s s2
   | S_letIn(x,a,s) ->
       fprintf fmt "@[<v>let %s = %a in@,%a@]" x pp_a a pp_s s
   | S_fsm(_,result,ts,s,b) ->
       fprintf fmt "@[<v>((%s) -> %a)%s@]" result pp_fsm (ts,s) (if b then "[restart]" else "")
+  | S_let_transitions(ts,s) ->
+      pp_fsm fmt (ts,s)
   | S_print(a) ->
       fprintf fmt "mixc_print(%a)" pp_a a
 

@@ -93,7 +93,6 @@ let pp_op fmt = function
 | String_length _ -> assert false (* deal with in pp_call*)
 | Compute_address -> assert false (* deal with in pp_call*)
 
-
 (** code generator for tuples deconstruction *)
 let rec pp_tuple_access fmt (i:int) ty (a:a) : unit =
 
@@ -158,13 +157,8 @@ and pp_a fmt = function
 | A_tuple aas -> pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " & ") pp_a fmt aas
 | A_string_get(s,i) ->
     fprintf fmt "@[%a(to_integer(unsigned(%s&\"000\")) to to_integer(unsigned(%s&\"000\"))+7)@]" pp_ident s i i
-| A_buffer_get(xb,idx) ->
-    (match idx with
-    | A_const(Int{value=n}) ->
-        (* this case is needed to avoid a typing ambiguity in VHDL (can't resolve overload for operator "&") *)
-        fprintf fmt  "%a(%d)" pp_ident xb n
-    | _ ->
-        fprintf fmt  "%a(to_integer(unsigned(%a)))" pp_ident xb pp_a idx)
+| A_buffer_get(xb) ->
+    pp_ident fmt ("$"^xb^"_value")
 | A_buffer_length(x,tz) ->
     fprintf fmt  "std_logic_vector(to_unsigned(%a'length,%d))" pp_ident x (size_ty tz)
 
@@ -183,16 +177,36 @@ let rec pp_s fmt = function
     fprintf fmt "@]end case;";
 | S_set(Delayed,x,a) -> fprintf fmt "@[<v>%a <= %a;@]" pp_ident x pp_a a
 | S_set(Immediate,x,a) -> fprintf fmt "@[<v>%a := %a;@]" pp_ident x pp_a a
-
-| S_buffer_set(_,_,x1,x2,x3) ->
+| S_setptr(x,idx) -> (* todo: avoid code duplication between S_setptr & S_setptr_write *)
+    (match idx with
+    | A_const(Int{value=n}) ->
+       fprintf fmt
+         "@[%a <= %d;@]" pp_ident ("$"^x^"_ptr") n
+    | _ ->
+       fprintf fmt
+         "@[%a <= to_integer(unsigned(%a));@]" pp_ident ("$"^x^"_ptr") pp_a idx)
+| S_setptr_write(x,idx,a) ->
+    (match idx with
+    | A_const(Int{value=n}) ->
+       fprintf fmt
+         "@[%a <= %d;@]@," pp_ident ("$"^x^"_ptr_write") n;
+    | _ ->
+       fprintf fmt
+         "@[%a <= to_integer(unsigned(%a));@]@," pp_ident ("$"^x^"_ptr_write") pp_a idx);
     fprintf fmt
-    "@[%a(to_integer(unsigned(%a))) <= %a;@]" pp_ident x1 pp_ident x2 pp_ident x3
+         "@[%a <= '1';@]@," pp_ident ("$"^x^"_write_request");
+    fprintf fmt
+      "@[%a <= %a;@]@," pp_ident ("$"^x^"_write") pp_a a;
+| S_buffer_set(x) ->
+    fprintf fmt
+      "@[%a <= '0';@]" pp_ident ("$"^x^"_write_request")
 
 | S_seq(s1,s2) -> fprintf fmt "@[<v>%a@,%a@]" pp_s s1 pp_s s2
 | S_letIn(x,a,s) -> fprintf fmt "@[<v>%a := %a;@,%a@]" pp_ident x pp_a a pp_s s
 | S_fsm(id,x,ts,s,b) ->
      let (st,cp,_) = List.assoc id !Encode.extra_machines in
      pp_fsm fmt ~restart:b ~state_var:st ~compute:cp (id,ts,s)
+| S_let_transitions _ -> assert false (* already expanded *)
 | S_print(a) ->
      fprintf fmt "report to_string(%a);@," pp_a a
 
@@ -217,10 +231,11 @@ let rec list_let_bindings (ts,s) =
   (* assume : no let-bindings in atoms (eliminated before) *)
   let rec accum = function
   | S_continue _ -> []
-  | S_set(Immediate,x,_) -> [x]
+  | S_set(Immediate,x,_) -> [x] (* ah ? *)
   | S_set(Delayed,_,_) -> []
-  | S_buffer_set(Immediate,_,x,_,_) -> [x]
-  | S_buffer_set(Delayed,_,_,_,_) -> []
+  | S_setptr _ 
+  | S_setptr_write _ -> []
+  | S_buffer_set _ -> []
   | S_if(_,s1,so) -> accum s1 @ (match so with None -> [] | Some s2 -> accum s2)
   | S_seq(s1,s2) -> accum s1 @ accum s2
   | S_case(_,hs,so) -> 
@@ -230,6 +245,8 @@ let rec list_let_bindings (ts,s) =
   | S_return _ -> []
   | S_fsm(_,_,ts,s,b) ->
       list_let_bindings (ts,s)
+  | S_let_transitions(ts,s) ->
+      assert false (* already expanded *)
   | S_print _ -> []
 in List.concat (List.map (fun (_,s) -> accum s) ts) @ accum s
 
@@ -363,9 +380,20 @@ architecture rtl of %a is@,@[<v 2>@," pp_ident name;
 
   List.iter (fun (x,Static_array(c,n)) ->
           fprintf fmt "signal %a : array_value_%d(0 to %d);@," pp_ident x (size_const c) (n-1);
+          fprintf fmt "signal %a : value(0 to %d);@," pp_ident ("$"^x^"_value") (size_const c - 1);
+          fprintf fmt "signal %a : natural range 0 to %d;@," pp_ident ("$"^x^"_ptr") (n - 1);
+          fprintf fmt "signal %a : natural range 0 to %d;@," pp_ident ("$"^x^"_ptr_write") (n - 1);
+          fprintf fmt "signal %a : value(0 to %d);@," pp_ident ("$"^x^"_write") (size_const c - 1);
+          fprintf fmt "signal %a : std_logic := '0';@," pp_ident ("$"^x^"_write_request")
+        ) statics;
+
+  fprintf fmt "@,@[<v 2>begin@,";
+
+  List.iter (fun (x,Static_array(c,n)) ->
+           fprintf fmt "@,%a <= %a(%a);@,@," pp_ident ("$"^x^"_value") pp_ident x pp_ident ("$"^x^"_ptr");
     ) statics;
 
-  fprintf fmt "@,@[<v 2>begin@,@[<v 2>process(reset, clk)@,";
+  fprintf fmt "@[<v 2>process(reset, clk)@,";
 
   begin
     let var_decls = Hashtbl.create 10 in
@@ -386,7 +414,9 @@ architecture rtl of %a is@,@[<v 2>@," pp_ident name;
       ) var_decls;
   end;
 
-  fprintf fmt "@]@,@[<v 2>begin@,@[<v 2>if (reset = '1') then@,";
+  fprintf fmt "@]@,@[<v 2>begin@,";
+
+  fprintf fmt "@[<v 2>if (reset = '1') then@,";
 
 
   fprintf fmt "@[<hov>";
@@ -411,6 +441,15 @@ architecture rtl of %a is@,@[<v 2>@," pp_ident name;
   fprintf fmt "@]@,@[<v 2>elsif rising_edge(clk) then@,";
 
   fprintf fmt "@[<v 2>if run = '1' then@,";
+
+
+  List.iter (fun (x,Static_array(c,n)) ->
+           fprintf fmt "@,@[<v 2>if %a = '1' then@," pp_ident ("$"^x^"_write_request");
+           fprintf fmt "%a(%a) <= %a;@]@," pp_ident x pp_ident ("$"^x^"_ptr_write") pp_ident ("$"^x^"_write");
+           fprintf fmt "end if;@,";
+    ) statics;
+
+
 
   pp_fsm ~restart:false fmt ~state_var ~compute ("main",ts,s);
 

@@ -159,14 +159,11 @@ let rec typing_a h a =
       TInt(TSize 8)
 
 
-  | A_buffer_get(xb,idx) ->
-       let telem = new_tvar () in
-       let tz = new_tvar () in
-       let tz2 = new_tvar () in
-       add_typing_env h xb (TStatic{elem=telem;size=tz});
-       let tidx = typing_a h idx in
-       unify tidx (TInt tz2);
-       telem
+  | A_buffer_get(xb) ->
+      let telem = new_tvar () in
+      let tz = new_tvar () in
+      add_typing_env h xb (TStatic{elem=telem;size=tz});
+      telem
 
   | A_buffer_length(x,ty) ->
       add_typing_env h x (TStatic{elem=new_tvar();size=new_tvar()});
@@ -177,12 +174,23 @@ let rec typing_s ~result h = function
       let t = typing_a h a in
       (* (Format.fprintf Format.std_formatter "======> (%s : %a)\n" x Fsm_syntax.Debug.pp_ty (canon t)); *)
       add_typing_env h x t
-  | S_buffer_set(_,ty,xb,xi,xe) ->
-       let tz = new_tvar () in
-       let tz2 = new_tvar () in
-       add_typing_env h xb (TStatic{elem=ty;size=tz});
-       add_typing_env h xi (TInt tz2);
-       add_typing_env h xe ty
+  | S_setptr(x,idx) ->
+      let telem = new_tvar () in
+      let tz = new_tvar () in
+      let tz2 = new_tvar () in
+      add_typing_env h x (TStatic{elem=telem;size=tz});
+      let tidx = typing_a h idx in
+      unify tidx (TInt tz2)
+  | S_setptr_write(x,idx,a) ->
+      let telem = typing_a h a in
+      let tz = new_tvar () in
+      let tz2 = new_tvar () in
+      add_typing_env h x (TStatic{elem=telem;size=tz});
+      let tidx = typing_a h idx in
+      unify tidx (TInt tz2)
+  | S_buffer_set(x) ->
+      let t = new_tvar () in
+      add_typing_env h x t
   | S_if(a,s,so) ->
       unify TBool (typing_a h a);
       typing_s ~result h s;
@@ -208,6 +216,8 @@ let rec typing_s ~result h = function
       typing_s  ~result h s
   | S_fsm(_,result2,ts,s,_) ->
       typing h ~result:result2 (ts,s)
+  | S_let_transitions(ts,s) ->
+      typing h ~result (ts,s)
   | S_print(a) ->
       let _ = typing_a h a in
       ()

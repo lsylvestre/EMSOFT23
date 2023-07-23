@@ -47,10 +47,11 @@ let rec combinatorial = function
     combinatorial e1 && combinatorial e2 && combinatorial e3
 | E_match(e1,hs,e_els) ->
     combinatorial e1 && List.for_all (fun (_,e) -> combinatorial e) hs && combinatorial e_els
+(*
 | E_app(E_var _,e1)
 | E_app(E_fix _,e1) -> false
 | E_app(E_const(Op op),e2) ->
-    Combinatorial.op_combinatorial op && combinatorial e2
+    Combinatorial.op_combinatorial op && combinatorial e2*)
 | E_app(e1,e2) ->
     false
 | E_tuple es ->

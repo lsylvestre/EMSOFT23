@@ -53,6 +53,7 @@ OBJS= src/prelude.cmo \
       src/compile/inspect/display_target.cmo \
       src/compile/back_end/target/fsm_typing.cmo \
       src/compile/back_end/fsm_comp.cmo \
+      src/compile/back_end/flat_transitions.cmo \
       src/compile/back_end/flat_let_atom.cmo \
       src/compile/back_end/encode.cmo \
       src/compile/back_end/target/gen_vhdl.cmo \

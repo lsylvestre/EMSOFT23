@@ -34,8 +34,9 @@ let rec encode ~result ~idle ~state_var ~rdy s =
       S_case(a, List.map (fun (c,s) -> c,encode ~result ~idle ~state_var ~rdy s) hs,Option.map (encode ~result ~idle ~state_var ~rdy) so)
   | S_letIn(x,a,s) ->
       S_letIn(x,a,encode ~result ~idle ~state_var ~rdy s)
-  | S_set _ as s -> s
-  | S_buffer_set _ as s -> s
+  | S_set _ -> s
+  | S_setptr _ | S_setptr_write _ -> s
+  | S_buffer_set _ -> s
   | S_seq(s1,s2) ->
       seq_ (encode ~result ~idle ~state_var ~rdy s1)
            (encode ~result ~idle ~state_var ~rdy s2)
@@ -46,9 +47,15 @@ let rec encode ~result ~idle ~state_var ~rdy s =
                  else idle in*)
       (* todo: when b is true, we should remove the [compute] state (dead code) *)
       extra_machines := (id,(sv,cp,List.map fst ts)) :: !extra_machines;
-      let ts,s = (encode_all ~result:(Immediate,result2) ~compute:cp ~state_var:sv ~rdy:(if b then None else Some (Immediate,id^"_rdy")) (ts,s)) in
+      let ts,s = encode_all ~result:(Immediate,result2) ~compute:cp ~state_var:sv ~rdy:(if b then None else Some (Immediate,id^"_rdy")) (ts,s) in
       S_fsm(id,result2,ts,s,b)
-  | S_print _ as s -> s
+    (*  | Inline -> 
+         let ts,s = encode_all ~result:(Immediate,result2) ~compute:cp ~state_var:sv ~rdy:None (ts,s) in
+         S_fsm(fsm_type,result2,ts,s,b))*)
+  | S_let_transitions(ts,s) ->
+      S_let_transitions(List.map (fun (q,s) -> q, (encode ~result ~idle ~state_var ~rdy s)) ts,
+                        encode ~result ~idle ~state_var ~rdy s)
+  | S_print _ -> s
 
 and encode_all ~result ~compute ~state_var ~rdy
  ?(idle=set_ state_var (A_var compute)) (ts,s) =

@@ -45,7 +45,9 @@ let rec combinatorial (e:e) : bool =
 	    false
 	| E_reg _ | E_exec _ ->
 	    false (* have an internal state *)
-	| E_static_array_length _ | E_static_array_get _ ->
-	    true
+	| E_static_array_length _ ->
+	    true 
+	| E_static_array_get _ ->
+	    false
 	| E_static_array_set _ ->
 	    false (* side effect *)

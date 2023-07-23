@@ -47,12 +47,24 @@ let rec flat_s = function
    s_let_bindings bs @@ S_set(w,x,a')
 | (S_buffer_set _) as s -> (* no sub-atoms*)
    s
+| S_setptr(x,a) -> 
+    let bs,a' = flat a in
+    s_let_bindings bs @@
+    S_setptr(x,a')
+| S_setptr_write(x,a,a_upd) -> 
+    let bs,a' = flat a in
+    let bs2,a_upd' = flat a_upd in
+    s_let_bindings bs @@
+    s_let_bindings bs2 @@
+    S_setptr_write(x,a',a_upd')
 | S_seq(s1,s2) ->  S_seq(flat_s s1,flat_s s2)
 | S_letIn(x,a,s) ->
     let bs,a' = flat a in
     s_let_bindings bs @@ S_letIn(x,a',flat_s s)
 | S_fsm(id,result,ts,s,b) ->
     S_fsm(id,result,List.map (fun (x,s) -> x,flat_s s) ts, flat_s s,b)
+| S_let_transitions(ts,s) ->
+    S_let_transitions(List.map (fun (x,s) -> x,flat_s s) ts, flat_s s)
 | S_print a -> S_print (flat_a a)
 
 let flat_let_atom (ts,s) =

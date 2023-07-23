@@ -26,7 +26,7 @@ module Gensym : sig val reset : unit -> unit
   let h = Hashtbl.create 10;;
 
   let reset () = 
-    c := 0;
+    (* c := 0;*)  (* no ! *)
     Hashtbl.clear h
 
   let gensym x =
