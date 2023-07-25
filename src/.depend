@@ -1,11 +1,3 @@
-src/compile/back_end/encode.cmo : \
-    src/compile/back_end/target/naming_convention.cmo \
-    src/compile/back_end/target/fsm_syntax.cmo \
-    src/syntax/ast.cmo
-src/compile/back_end/encode.cmx : \
-    src/compile/back_end/target/naming_convention.cmx \
-    src/compile/back_end/target/fsm_syntax.cmx \
-    src/syntax/ast.cmx
 src/compile/back_end/flat_let_atom.cmo : \
     src/compile/back_end/target/fsm_syntax.cmo \
     src/compile/combinatorial.cmo
@@ -56,34 +48,38 @@ src/compile/back_end/gluecode/gen_hw_tcl.cmo :
 src/compile/back_end/gluecode/gen_hw_tcl.cmx :
 src/compile/back_end/gluecode/gen_platform_tcl.cmo :
 src/compile/back_end/gluecode/gen_platform_tcl.cmx :
+src/compile/back_end/list_machines.cmo : \
+    src/compile/back_end/target/fsm_syntax.cmo \
+    src/syntax/ast.cmo
+src/compile/back_end/list_machines.cmx : \
+    src/compile/back_end/target/fsm_syntax.cmx \
+    src/syntax/ast.cmx
 src/compile/back_end/target/fsm_syntax.cmo :
 src/compile/back_end/target/fsm_syntax.cmx :
 src/compile/back_end/target/fsm_typing.cmo : \
     src/typing/typing.cmo \
     src/prelude.cmo \
-    src/compile/back_end/target/naming_convention.cmo \
     src/compile/back_end/target/fsm_syntax.cmo \
     src/frontend/fix_int_lit_size.cmo \
     src/syntax/ast.cmo
 src/compile/back_end/target/fsm_typing.cmx : \
     src/typing/typing.cmx \
     src/prelude.cmx \
-    src/compile/back_end/target/naming_convention.cmx \
     src/compile/back_end/target/fsm_syntax.cmx \
     src/frontend/fix_int_lit_size.cmx \
     src/syntax/ast.cmx
 src/compile/back_end/target/gen_vhdl.cmo : \
     src/compile/back_end/target/naming_convention.cmo \
+    src/compile/back_end/list_machines.cmo \
     src/compile/back_end/target/fsm_typing.cmo \
     src/compile/back_end/target/fsm_syntax.cmo \
-    src/compile/back_end/fsm_comp.cmo \
-    src/compile/back_end/encode.cmo
+    src/compile/back_end/fsm_comp.cmo
 src/compile/back_end/target/gen_vhdl.cmx : \
     src/compile/back_end/target/naming_convention.cmx \
+    src/compile/back_end/list_machines.cmx \
     src/compile/back_end/target/fsm_typing.cmx \
     src/compile/back_end/target/fsm_syntax.cmx \
-    src/compile/back_end/fsm_comp.cmx \
-    src/compile/back_end/encode.cmx
+    src/compile/back_end/fsm_comp.cmx
 src/compile/back_end/target/naming_convention.cmo :
 src/compile/back_end/target/naming_convention.cmx :
 src/compile/combinatorial.cmo : \
@@ -93,6 +89,7 @@ src/compile/combinatorial.cmx : \
 src/compile/compile.cmo : \
     src/compile/middle_end/rename_main_arg.cmo \
     src/compile/middle_end.cmo \
+    src/compile/back_end/list_machines.cmo \
     src/compile/back_end/target/gen_vhdl.cmo \
     src/compile/middle_end/fun_shape_entry_point.cmo \
     src/compile/back_end/target/fsm_typing.cmo \
@@ -101,13 +98,13 @@ src/compile/compile.cmo : \
     src/compile/back_end/flat_transitions.cmo \
     src/compile/back_end/flat_let_atom.cmo \
     src/compile/encode_reg_exec.cmo \
-    src/compile/back_end/encode.cmo \
     src/compile/inspect/display_target.cmo \
     src/compile/inspect/display_internal_steps.cmo \
     src/syntax/ast.cmo
 src/compile/compile.cmx : \
     src/compile/middle_end/rename_main_arg.cmx \
     src/compile/middle_end.cmx \
+    src/compile/back_end/list_machines.cmx \
     src/compile/back_end/target/gen_vhdl.cmx \
     src/compile/middle_end/fun_shape_entry_point.cmx \
     src/compile/back_end/target/fsm_typing.cmx \
@@ -116,7 +113,6 @@ src/compile/compile.cmx : \
     src/compile/back_end/flat_transitions.cmx \
     src/compile/back_end/flat_let_atom.cmx \
     src/compile/encode_reg_exec.cmx \
-    src/compile/back_end/encode.cmx \
     src/compile/inspect/display_target.cmx \
     src/compile/inspect/display_internal_steps.cmx \
     src/syntax/ast.cmx
@@ -136,6 +132,7 @@ src/compile/inspect/display_target.cmx : \
     src/compile/back_end/target/fsm_syntax.cmx
 src/compile/middle_end.cmo : \
     src/compile/middle_end/specialize.cmo \
+    src/compile/middle_end/sharing.cmo \
     src/compile/middle_end/propagation.cmo \
     src/compile/middle_end/name_anonymus_functions.cmo \
     src/compile/middle_end/move_down_gfun_under_register.cmo \
@@ -152,6 +149,7 @@ src/compile/middle_end.cmo : \
     src/compile/middle_end/anf.cmo
 src/compile/middle_end.cmx : \
     src/compile/middle_end/specialize.cmx \
+    src/compile/middle_end/sharing.cmx \
     src/compile/middle_end/propagation.cmx \
     src/compile/middle_end/name_anonymus_functions.cmx \
     src/compile/middle_end/move_down_gfun_under_register.cmx \
@@ -238,11 +236,13 @@ src/compile/middle_end/let_floating.cmx : \
     src/syntax/ast.cmx
 src/compile/middle_end/matching.cmo : \
     src/syntax/map_pi.cmo \
+    src/compile/combinatorial.cmo \
     src/syntax/ast_undecorated.cmo \
     src/syntax/ast_subst.cmo \
     src/syntax/ast.cmo
 src/compile/middle_end/matching.cmx : \
     src/syntax/map_pi.cmx \
+    src/compile/combinatorial.cmx \
     src/syntax/ast_undecorated.cmx \
     src/syntax/ast_subst.cmx \
     src/syntax/ast.cmx
@@ -279,6 +279,16 @@ src/compile/middle_end/rename_main_arg.cmo : \
 src/compile/middle_end/rename_main_arg.cmx : \
     src/syntax/ast_subst.cmx \
     src/syntax/ast_pprint.cmx \
+    src/syntax/ast.cmx
+src/compile/middle_end/sharing.cmo : \
+    src/typing/typing.cmo \
+    src/compile/back_end/target/naming_convention.cmo \
+    src/syntax/ast_undecorated.cmo \
+    src/syntax/ast.cmo
+src/compile/middle_end/sharing.cmx : \
+    src/typing/typing.cmx \
+    src/compile/back_end/target/naming_convention.cmx \
+    src/syntax/ast_undecorated.cmx \
     src/syntax/ast.cmx
 src/compile/middle_end/specialize.cmo : \
     src/compile/middle_end/propagation.cmo \

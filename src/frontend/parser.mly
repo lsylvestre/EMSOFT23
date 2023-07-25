@@ -11,7 +11,7 @@
 
 %token LPAREN RPAREN LBRACKET RBRACKET COMMA PIPE_PIPE EQ EQ_EQ COL SEMI HAT STATIC DOT_LENGTH
 %token SHARP_PIPE_LBRACKET PIPE_RBRACKET
-%token FUN AMP DOT REGISTER EXEC LAST DEFAULT BUFFER_MAKE
+%token FUN AMP DOT REGISTER EXEC LAST DEFAULT
 %token NODE IMPLY
 %token MATCH WITH PIPE END
 %token LET REC AND IN IF THEN ELSE FIX VAR
@@ -28,18 +28,20 @@
 
 /* The precedences must be listed from low to high. */
 
+%right    PIPE_PIPE /* parallel construct */
 %nonassoc IN
-%nonassoc SEMICOL
+%nonassoc SEMI
 %nonassoc LET
-%left     COMMA
 %nonassoc IF THEN ELSE
-
-%right    AMP_AMP OR
-%left     LT LE GT GE NEQ EQ
+%right    LEFT_ARROW
+%left     COMMA
+%right    AMP AMP_AMP OR
+%left     LT LE GT GE NEQ EQ EQ_EQ
 %left     PLUS MINUS
 %right    LSL LSR ASR
 %left     TIMES
-%left    DIV MOD LAND LOR LXOR
+%left     DIV MOD LAND LOR LXOR XOR
+%nonassoc prec_unary_minus
 %nonassoc DOT
 %nonassoc BOOL_LIT IDENT LPAREN
 
@@ -59,10 +61,6 @@ static:
 
 exp_eof:
 | e=exp EOF {e}
-
-decls:
-| ds=decl* EOF
-       { ds }
 
 decl_opt:
 | d=decl { Some d }
@@ -269,7 +267,7 @@ app_exp_desc:
 | x=IDENT DOT_LENGTH { E_static_array_length x }
 | x=IDENT LBRACKET e1=exp RBRACKET LEFT_ARROW e2=app_exp { E_static_array_set(x,e1,e2) }
 | e1=aexp e2=aexp { E_app(e1,e2) }
-| MINUS e1=aexp { E_app(E_const(Op(Sub)),E_tuple[E_const(Int(0,Typing.unknown()));e1]) }
+| MINUS e1=aexp %prec prec_unary_minus { E_app(E_const(Op(Sub)),E_tuple[E_const(Int(0,Typing.unknown()));e1]) }
 | e1=app_exp op=binop e2=app_exp
         { E_app (mk_loc (with_file $loc) @@ E_const (Op op),
                  mk_loc (with_file $loc) @@ E_tuple [e1;e2])
@@ -345,7 +343,6 @@ const:
 | NOT { Op Not }
 | LPAREN op=binop RPAREN { Op op }
 
-
 %inline binop:
 | PLUS       { Add }
 | MINUS      { Sub }
@@ -359,7 +356,6 @@ const:
 | EQ | EQ_EQ { Eq }
 | NEQ        { Neq }
 | AMP        { And }
-| OR         { Or }
 | XOR        { Xor }
 | LXOR       { Lxor } 
 | LAND       { Land } 

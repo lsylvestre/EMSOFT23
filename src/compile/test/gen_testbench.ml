@@ -27,7 +27,7 @@ let gen_testbench fmt typing_env name ty ((argument,ta),(result,tr)) (args_for_s
       signal run    : in std_logic;
       signal rdy    : out value(0 to 0);
       signal %s : in value(0 to %d);
-      signal %s : out value(0 to %d)" argument (argument_size-1) result (result_size-1);
+      signal result : out value(0 to %d)" argument (argument_size-1) (result_size-1);
 
   begin
     if !Fsm_comp.allow_heap_access || !Fsm_comp.allow_heap_assign then

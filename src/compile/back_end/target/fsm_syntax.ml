@@ -45,17 +45,20 @@ type a = A_letIn of x * a * a
 
 type write = Delayed | Immediate
 
-type s = S_return of a
-  | S_continue of x * a * int option (* None = continue sans changer d'instance (i.e. appel récursif terminal) *)
+type q = x
+
+type s =
+  | S_skip
+  | S_continue of q
   | S_if of a * s * s option
   | S_case of a * (c * s) list * s option
-  | S_set of write * x * a
+  | S_set of x * a
   | S_setptr of x * a
   | S_setptr_write of x * a * a
   | S_buffer_set of x
   | S_seq of s * s
   | S_letIn of x * a * s
-  | S_fsm of id * x * t list * s (* result * transition * start instruction *)
+  | S_fsm of id * x * x * q * t list * s (* id * rdy * result * compute * transition * start instruction *)
                 * bool (* <- restart *)
   | S_let_transitions of t list * s
   | S_print of a (* non synthesizable *)
@@ -66,7 +69,7 @@ and id = string
   (* // ... *)
   (* case *)
 
-let set_ ?(write=Delayed) x a = S_set(write,x,a)
+let set_ x a = S_set(x,a)
 let seq_ s s' = S_seq(s,s')
 
 
@@ -140,13 +143,9 @@ module Debug = struct
 
 
   let rec pp_s fmt = function
-  | S_return a ->
-      fprintf fmt "return %a" pp_a a
-  | S_continue(f,a,id) ->
-      let pp_id fmt = function
-      | None -> fprintf fmt "none"
-      | Some n -> fprintf fmt "%d" n in
-    fprintf fmt "continue %s[%a](%a)" f pp_id id pp_a a
+  | S_skip -> fprintf fmt "skip"
+  | S_continue q ->
+    fprintf fmt "continue %s" q
   | S_if(a,s,so) ->
       fprintf fmt "@[<v 2>if %a(0) = '1' then@,%a@]@," pp_a a pp_s s;
       Option.iter (fun s' ->
@@ -156,9 +155,8 @@ module Debug = struct
       List.iter (fun (c,s) -> fprintf fmt "@[<v 2>when %a =>@,%a@]@," pp_c c pp_s s) hs;
       Option.iter (fun s -> fprintf fmt "@[<v 2>when others => %a@]@," pp_s s) so;
       fprintf fmt "@]end case;";
-  | S_set(w,x,a) ->
-      let op = match w with Delayed -> "<=" | Immediate -> ":=" in
-      fprintf fmt "@[<v>%s %s %a;@]" x op pp_a a
+  | S_set(x,a) ->
+      fprintf fmt "@[<v>%s := %a;@]" x pp_a a
   | S_setptr(x,idx) ->
       fprintf fmt "@[<v>setptr<%s>[%a];@]" x pp_a idx
   | S_setptr_write(x,idx,a) ->
@@ -169,7 +167,7 @@ module Debug = struct
       fprintf fmt "@[<v>%a@,%a@]" pp_s s1 pp_s s2
   | S_letIn(x,a,s) ->
       fprintf fmt "@[<v>let %s = %a in@,%a@]" x pp_a a pp_s s
-  | S_fsm(_,result,ts,s,b) ->
+  | S_fsm(_,_,result,_,ts,s,b) ->
       fprintf fmt "@[<v>((%s) -> %a)%s@]" result pp_fsm (ts,s) (if b then "[restart]" else "")
   | S_let_transitions(ts,s) ->
       pp_fsm fmt (ts,s)

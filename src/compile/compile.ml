@@ -20,26 +20,26 @@ let compile name ty fmt pi =
 
   D.display_pi D.MiddleEnd pi;
 
-  let (result,infos,fsm) as design = Fsm_comp.compile ~result:"result" pi in
+  let (rdy,result,compute,fsm) as design = Fsm_comp.compile pi in
   let statics = List.map (function x,Ast.Static_array(c,n) -> x,Fsm_syntax.Static_array(Fsm_comp.to_c c,n)) pi.statics in
 
   Display_target.(display Fsm fsm);
 
   let fsm = Flat_transitions.flatten fsm in
+  Display_target.(display Flat_ts fsm);
 
   let fsm = Flat_let_atom.flat_let_atom fsm in
   Display_target.(display Flat fsm);
 
-  let typing_env = Fsm_typing.typing_circuit ~statics ty (result,fsm) in
+  let typing_env = Fsm_typing.typing_circuit ~statics ty (rdy,result,fsm) in
+
+  (* Hashtbl.iter (fun  x ty -> Printf.printf "%s : %s\n" x (Fsm_typing.string_of_ty ty)) typing_env; *)
+
+  let fsm = List_machines.list_machines fsm in
 
   let name = "main" in
   let state_var = "state" in
   let argument = "argument" in
-  let compute = "Compute" in
-  let rdy = "rdy" in
 
-  let fsm = Encode.encode_all ~result:(Delayed,result) ~compute ~state_var ~rdy:(Some(Delayed,rdy)) fsm in
-  Display_target.(display Encode fsm);
-
-  let (argument,result) = Gen_vhdl.pp_component fmt ~name ~state_var ~argument ~result ~compute ~rdy ~statics typing_env infos fsm in
+  let (argument,result) = Gen_vhdl.pp_component fmt ~name ~state_var ~argument ~result ~compute ~rdy ~statics typing_env (let infos = SMap.empty in infos) fsm in
   (argument,result,typing_env)

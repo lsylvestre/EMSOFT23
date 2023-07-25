@@ -3,7 +3,7 @@ open Fsm_syntax
 
 let rec flat s =
   match s with
-  | S_return _
+  | S_skip
   | S_continue _ 
   | S_set _ 
   | S_setptr _
@@ -36,12 +36,12 @@ let rec flat s =
   | S_letIn(x,a,s1) ->
       let bs1,s1' = flat s1 in
       bs1,S_letIn(x,a,s1')
-  | S_fsm(id,result,ts,s1,b) ->
+  | S_fsm(id,rdy,result,compute,ts,s1,b) ->
       let bs1,s1' = flat s1 in
       let bss,ts' = List.split @@ List.map (fun (qi,si) -> 
                                               let (bsi,si') = flat si in (bsi,(qi,si'))) ts in
       let bs = List.concat bss in
-      [],S_fsm(id,result,bs1@bs@ts',s1',b)
+      [],S_fsm(id,rdy,result,compute,bs1@bs@ts',s1',b)
 
   | S_let_transitions(ts,s1) ->
       let bs1,s1' = flat s1 in

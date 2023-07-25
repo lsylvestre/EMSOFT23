@@ -64,7 +64,6 @@ type token =
   | DEFAULT
   | COMMA
   | COL
-  | BUFFER_MAKE
   | BOOL_LIT of (bool)
   | ASR
   | AND

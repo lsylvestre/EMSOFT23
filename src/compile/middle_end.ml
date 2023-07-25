@@ -37,16 +37,18 @@ let compile (pi:pi) : pi =
   let pi = Ast_rename.rename_pi pi in
   let pi = Ast_ensure_rec_naming.ensure_rec_naming_pi pi in 
 
+  (* let pi = Anf.anf_pi pi in *)
+  
   (** inlining of instantaneous functions *)
   let pi = Inline.inl_pi pi in
   display_pi Inline pi;
 
-  (** move-up let-bindings (optional) *)
-  let pi = Let_floating.let_floating_pi pi in
+  let pi = Deadcode_elimination.deadcode_elimination_pi pi in
 
-  (** copy/constant folding (optional) *)
-  let pi = Propagation.propagation_pi pi in
-  display_pi Propagation pi;
+  let pi = Sharing.sharing_pi pi in
+  display_pi Sharing pi;
+
+  let pi = Anf.anf_pi pi in
 
   let pi = Matching.matching_pi pi in
   display_pi Matching pi;
@@ -56,8 +58,6 @@ let compile (pi:pi) : pi =
   (** filtering [pi.ds] to keep-only functions needed by [pi.main] (and their dependancies).
       Current compilation scheme to FSM (see [fsm_comp.ml]) produces ill-typed code
       if this transformation is not performed *)
-
-  let pi = Deadcode_elimination.deadcode_elimination_pi pi in
 
   (* put a fresh name to each register *)
   let pi = Instantiate.instantiate_pi pi in

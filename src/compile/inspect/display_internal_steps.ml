@@ -1,6 +1,6 @@
 
 type print_mode = Any | Rename | Front | Encode | Anf | Let_floating | Lambda_lifting
-                | Specialize | Inline | Propagation
+                | Specialize | Inline | Sharing | Propagation
                 | Matching | MiddleEnd
 
 let string_of_print_mode s =
@@ -14,6 +14,7 @@ let string_of_print_mode s =
   | "lift" -> Lambda_lifting
   | "spec" -> Specialize
   | "inl" -> Inline
+  | "sharing" -> Sharing
   | "prop" -> Propagation
   | "match" -> Matching
   | "middle-end" -> MiddleEnd

@@ -26,14 +26,9 @@ let flat_a a =
   List.fold_right (fun (x,a1) a2 -> A_letIn(x,a1,a2)) bs a'
 
 let rec flat_s = function
-| S_return a ->
-    let bs,a' = flat a in
-    s_let_bindings bs @@
-    S_return a'
-| S_continue(f,a,id) ->
-    let bs,a' = flat a in
-    s_let_bindings bs @@
-    S_continue(f,a',id)
+| S_skip -> S_skip
+| S_continue q ->
+    S_continue q
 | S_if(a,s1,so) ->
     let bs,a' = flat a in
     s_let_bindings bs @@
@@ -42,9 +37,9 @@ let rec flat_s = function
     let bs,a' = flat a in
     s_let_bindings bs @@
     S_case(a',List.map (fun (x,s) -> x,flat_s s) hs,Option.map flat_s so)
-| S_set(w,x,a) ->
+| S_set(x,a) ->
    let bs,a' = flat a in
-   s_let_bindings bs @@ S_set(w,x,a')
+   s_let_bindings bs @@ S_set(x,a')
 | (S_buffer_set _) as s -> (* no sub-atoms*)
    s
 | S_setptr(x,a) -> 
@@ -61,8 +56,8 @@ let rec flat_s = function
 | S_letIn(x,a,s) ->
     let bs,a' = flat a in
     s_let_bindings bs @@ S_letIn(x,a',flat_s s)
-| S_fsm(id,result,ts,s,b) ->
-    S_fsm(id,result,List.map (fun (x,s) -> x,flat_s s) ts, flat_s s,b)
+| S_fsm(id,rdy,result,compute,ts,s,b) ->
+    S_fsm(id,rdy,result,compute,List.map (fun (x,s) -> x,flat_s s) ts, flat_s s,b)
 | S_let_transitions(ts,s) ->
     S_let_transitions(List.map (fun (x,s) -> x,flat_s s) ts, flat_s s)
 | S_print a -> S_print (flat_a a)

@@ -24,20 +24,26 @@ let rec specialize ds e =
       E_fun(x,specialize ds e1)
   | E_app(E_const _,e2) -> e
   | E_app(E_var f,e2) ->
-      if not (List.mem_assoc f ds) then E_app(E_var f,e2) else
-      if not (has_fv ds e2) then E_app(E_var f,e2) else
-      begin
-        incr nb_modifs;
-        let p,ef = let rec find f =
-                     match List.assoc_opt f ds with
-                     | Some (E_fun(p,ef)) -> p,ef
-                     | Some (E_var g) -> find g
-                     | _ -> assert false
-                   in find f
-        in
-        let e' =Propagation.prop_n @@ subst_p_e p e2 ef in
-        e'
-      end (* in ANF, we can *)
+      (let exception Fix in (* currently recursive functions are not specialized *)
+      try
+        if not (List.mem_assoc f ds) then E_app(E_var f,e2) else
+        if not (has_fv ds e2) then E_app(E_var f,e2) else
+        begin
+          let p,ef = let rec find f =
+                       match List.assoc_opt f ds with
+                       | Some (E_fun(p,ef)) ->
+                          incr nb_modifs; p,ef
+                       | Some (E_var g) ->
+                          incr nb_modifs; find g
+                       | Some (E_fix _) -> 
+                           raise Fix
+                       | _ -> assert false
+                     in find f
+          in
+          let e' = Propagation.prop_n @@ subst_p_e p e2 ef in
+          e'
+        end (* in ANF, we can *)
+      with Fix -> E_app(E_var f,e2))
   | E_app(e1,e2) ->  E_app(specialize ds e1,e2)
   | E_if(e1,e2,e3) ->
       E_if(specialize ds e1,specialize ds e2,specialize ds e3) (* ds1, ds2 and ds3 disjoint *)

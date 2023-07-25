@@ -48,11 +48,11 @@ let () =
     ("-pp",      Arg.String Display_internal_steps.set_print_mode,
                  "display the output of the specified (intermediates)\
                  \ compilation pass specified.\n\tPossible values:\
-                 \ [front;ren;anf;float;lift;spec;inl;prop;match;middle-end;fsm;flat;encode].");
+                 \ [front;ren;anf;float;lift;spec;inl;sharing;prop;match;middle-end].");
 
     ("-pp-fsm", Arg.String Display_target.set_print_mode,
                  "display the output of the specified (low-level)\
-                 \ compilation pass.\n\tPossible values: [fsm;flat;encode].");
+                 \ compilation pass.\n\tPossible values: [fsm;flat;flat-ts].");
 
     ("-hexa",    Arg.Set Ast_pprint.hexa_int_pp_flag,
                  "printer using hexadecimal");

@@ -1,11 +1,11 @@
 
-type print_mode = Any | Fsm | Flat | Encode
+type print_mode = Any | Fsm | Flat | Flat_ts
 
 let string_of_print_mode s =
   match s with
   | "fsm" -> Fsm
   | "flat" -> Flat
-  | "encode" -> Encode
+  | "flat-ts" -> Flat_ts
   | _ -> failwith "unknown print mode"
 
 let print_mode = ref Any

@@ -29,7 +29,6 @@
        "mod",   MOD;
        "last",  LAST;
        "default",  DEFAULT;
-       "buffer_make", BUFFER_MAKE;
        "var", VAR;
        "static", STATIC;
        "match", MATCH;

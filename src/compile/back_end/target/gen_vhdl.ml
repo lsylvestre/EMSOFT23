@@ -44,6 +44,16 @@ let norm_ident x =
 let pp_ident fmt (x:x) : unit =
     fprintf fmt "%s" (norm_ident x)
 
+let const_zero nbits =
+  let bits_in_hexa = nbits / 4 in
+    let bits_in_binary = nbits mod 4 in
+    let make ?(hexa=false) n =
+      "\""^(String.make n '0')^"\""
+    in
+    match bits_in_binary,bits_in_hexa  with
+    | 0,n -> "X"^make n
+    | n,0 -> make n
+    | n,m -> make n^"& X"^make m
 
 (** code generator for constants *)
 let pp_c fmt c =
@@ -56,7 +66,7 @@ let pp_c fmt c =
       begin
         assert false (** should not happen ! *)
       end;
-      fprintf fmt "\"%s\" & X\"%s\"" (String.make l_pad '0') v
+      fprintf fmt "%s & X\"%s\"" (const_zero l_pad) v
   | Bool b ->
       (* notice: in VHDL, mixc_true(0) is valid, but "1"(0) is invalid. *)
       fprintf fmt "%s" (if b then "mixc_true" else "mixc_false")
@@ -124,7 +134,8 @@ let rec pp_tuple_access fmt (i:int) ty (a:a) : unit =
             let j = tot-z'-size_ty t in
             let k = tot - z'-1 in
             `Slice(a,j,k)
-      | _ -> assert false
+      | _,ty2 -> Printf.printf "---> %s\n" (string_of_ty ty_a) ;
+                assert false
   in
 
   match tuple_access i ty a with
@@ -163,20 +174,20 @@ and pp_a fmt = function
     fprintf fmt  "std_logic_vector(to_unsigned(%a'length,%d))" pp_ident x (size_ty tz)
 
 (** code generator for statements *)
-let rec pp_s fmt = function
-| (S_return _ | S_continue _) -> assert false (* already expanded *)
+let rec pp_s ~st fmt = function
+| S_skip -> ()
+| S_continue q -> fprintf fmt "%a <= %a;" pp_ident st pp_ident q
 | S_if(a,s1,so) ->
-    fprintf fmt "@[<v 2>if %a(0) = '1' then@,%a@]" pp_a a pp_s s1;
-    Option.iter (fun s2 -> fprintf fmt "@,@[<v 2>else@,%a@]" pp_s s2) so;
+    fprintf fmt "@[<v 2>if %a(0) = '1' then@,%a@]" pp_a a (pp_s ~st) s1;
+    Option.iter (fun s2 -> fprintf fmt "@,@[<v 2>else@,%a@]" (pp_s ~st) s2) so;
      fprintf fmt "@,end if;"
 | S_case(a,hs,so) ->
     fprintf fmt "@[<v>case %a is@," pp_a a;
-    List.iter (fun (c,s) -> fprintf fmt "@[<v 2>when %a =>@,%a@]@," pp_c c pp_s s) hs;
+    List.iter (fun (c,s) -> fprintf fmt "@[<v 2>when %a =>@,%a@]@," pp_c c (pp_s ~st) s) hs;
     Option.iter (fun s ->
-      fprintf fmt "@[<v 2>when others =>@,%a@]@,"  pp_s s) so;
+      fprintf fmt "@[<v 2>when others =>@,%a@]@," (pp_s ~st) s) so;
     fprintf fmt "@]end case;";
-| S_set(Delayed,x,a) -> fprintf fmt "@[<v>%a <= %a;@]" pp_ident x pp_a a
-| S_set(Immediate,x,a) -> fprintf fmt "@[<v>%a := %a;@]" pp_ident x pp_a a
+| S_set(x,a) -> fprintf fmt "@[<v>%a := %a;@]" pp_ident x pp_a a
 | S_setptr(x,idx) -> (* todo: avoid code duplication between S_setptr & S_setptr_write *)
     (match idx with
     | A_const(Int{value=n}) ->
@@ -196,59 +207,35 @@ let rec pp_s fmt = function
     fprintf fmt
          "@[%a <= '1';@]@," pp_ident ("$"^x^"_write_request");
     fprintf fmt
-      "@[%a <= %a;@]@," pp_ident ("$"^x^"_write") pp_a a;
+      "@[%a <= %a;@]" pp_ident ("$"^x^"_write") pp_a a;
 | S_buffer_set(x) ->
     fprintf fmt
       "@[%a <= '0';@]" pp_ident ("$"^x^"_write_request")
 
-| S_seq(s1,s2) -> fprintf fmt "@[<v>%a@,%a@]" pp_s s1 pp_s s2
-| S_letIn(x,a,s) -> fprintf fmt "@[<v>%a := %a;@,%a@]" pp_ident x pp_a a pp_s s
-| S_fsm(id,x,ts,s,b) ->
-     let (st,cp,_) = List.assoc id !Encode.extra_machines in
-     pp_fsm fmt ~restart:b ~state_var:st ~compute:cp (id,ts,s)
-| S_let_transitions _ -> assert false (* already expanded *)
+| S_seq(s1,s2) -> fprintf fmt "@[<v>%a@,%a@]" (pp_s ~st) s1 (pp_s ~st) s2
+| S_letIn(x,a,s) -> fprintf fmt "@[<v>%a := %a;@,%a@]" pp_ident x pp_a a (pp_s ~st) s
+| S_fsm(id,rdy,x,cp,ts,s,b) ->
+     let (st2,_,_) = List.assoc id !List_machines.extra_machines in
+     pp_fsm fmt ~restart:b ~state_var:st2 ~compute:cp ~rdy (id,ts,s)
+| S_let_transitions _ ->
+    (* already expanded *)
+    assert false
 | S_print(a) ->
      fprintf fmt "report to_string(%a);@," pp_a a
 
 (** code generator for FSMs *)
-and pp_fsm fmt ~restart ~state_var ~compute (id,ts,s) =
+and pp_fsm fmt ~restart ~state_var:st ~compute ~rdy (id,ts,s) =
     if restart then (
-      fprintf fmt "@[<v>case %a is@," pp_ident state_var;
-      List.iter (fun (x,s) -> fprintf fmt "@[<v 2>when %a =>@,%a@]@," pp_ident x pp_s s) ts;
-      fprintf fmt "@[<v 2>when %a =>@,%a@]@," pp_ident compute pp_s s;
-      fprintf fmt "@]end case;")
+      fprintf fmt "@[<v>case %a is@," pp_ident st;
+      List.iter (fun (x,s) -> fprintf fmt "@[<v 2>when %a =>@,%a@]@," pp_ident x (pp_s ~st) s) ts;
+      fprintf fmt "@[<v 2>when %a =>@,%a@]" pp_ident compute (pp_s ~st) s;
+      fprintf fmt "@]@,end case;")
     else (
-    fprintf fmt "@[<v>case %a is@," pp_ident state_var;
-    List.iter (fun (x,s) -> fprintf fmt "@[<v 2>when %a =>@,%a@]@," pp_ident x pp_s s) ts;
-    fprintf fmt "@[<v 2>when %a =>@,%s \"0\";@,%a@]@," pp_ident compute (if id="main" then "rdy <=" else id^"_rdy :=") pp_s s;
+    fprintf fmt "@[<v>case %a is@," pp_ident st;
+    List.iter (fun (x,s) -> fprintf fmt "@[<v 2>when %a =>@,%a@]@," pp_ident x (pp_s ~st) s) ts;
+    fprintf fmt "@[<v 2>when %a =>@,%a@]@," pp_ident compute (pp_s ~st) s;
     fprintf fmt "@]end case;"
    )
-
-
-(* in fact, it is not the let-bindings that we are looking for,
-but the VHDL variables in the code to generate, in order to infer the declarations *)
-let rec list_let_bindings (ts,s) =
-  (* assume : no let-bindings in atoms (eliminated before) *)
-  let rec accum = function
-  | S_continue _ -> []
-  | S_set(Immediate,x,_) -> [x] (* ah ? *)
-  | S_set(Delayed,_,_) -> []
-  | S_setptr _ 
-  | S_setptr_write _ -> []
-  | S_buffer_set _ -> []
-  | S_if(_,s1,so) -> accum s1 @ (match so with None -> [] | Some s2 -> accum s2)
-  | S_seq(s1,s2) -> accum s1 @ accum s2
-  | S_case(_,hs,so) -> 
-      (List.map (fun (_,s) -> accum s) hs |> List.concat)
-      @ (match so with None -> [] | Some s2 -> accum s2)
-  | S_letIn(x,_,s) -> x::accum s
-  | S_return _ -> []
-  | S_fsm(_,_,ts,s,b) ->
-      list_let_bindings (ts,s)
-  | S_let_transitions(ts,s) ->
-      assert false (* already expanded *)
-  | S_print _ -> []
-in List.concat (List.map (fun (_,s) -> accum s) ts) @ accum s
 
 (* default value as bitvector where each bit is at '0' *)
 let default_zero_value nbits =
@@ -259,20 +246,6 @@ let default_zero t =
   match Fsm_typing.canon t with
   | TStatic _ -> "(others => (others => '0'))"
   | _ -> "(others => '0')"
-
-  (* let bits_in_hexa = nbits / 4 in
-  let bits_in_binary = nbits mod 4 in
-  let make ?(hexa=false) n =
-    "\""^(String.make n '0')^"\""
-  in
-  match bits_in_binary,bits_in_hexa  with
-  | 0,n -> "X"^make n
-  | n,0 -> make n
-  | n,m -> make n^"& X"^make m *)
-
-  (* else
-    "X\""^(String.make (int_of_float (Float.ceil (float nbits /. 4.))) '0')^"\"" (* incorrect: pour 33 bits par exemple *)
-*)
 
 let qualify prefix y =
   prefix^"_"^y
@@ -291,7 +264,7 @@ let declare_machine fmt ~state_var ~compute ~infos (ts,s) =
 
   declare_state_var fmt state_var compute (List.map fst ts);
 
-  List.iter (fun (_,(sv,cp,xs)) -> declare_state_var fmt sv cp xs) !Encode.extra_machines;
+  List.iter (fun (_,(sv,cp,xs)) -> declare_state_var fmt sv cp xs) !List_machines.extra_machines;
 
   Fsm_comp.SMap.iter (fun x w ->
     let inst_tname = Naming_convention.instances_type x in
@@ -332,8 +305,6 @@ let pp_component fmt ~name ~state_var ~argument ~result ~compute ~rdy ~statics t
                        Hashtbl.remove typing_env (Naming_convention.instance_id_of_fun x)) infos;
 
 
-  let vars = list_let_bindings (ts,s) in
-
   fprintf fmt "@[<v>library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
@@ -353,11 +324,11 @@ use work.runtime.all;
   fprintf fmt "@,port(@[<v>signal clk    : in std_logic;@,";
   fprintf fmt "signal reset  : in std_logic;@,";
   fprintf fmt "signal run    : in std_logic;@,";
-  fprintf fmt "signal %s    : out value(0 to 0);@," rdy;
+  fprintf fmt "signal rdy    : out value(0 to 0);@,";
   let st_argument = match t_argument with None -> "argument_width - 1" | Some t -> string_of_int (size_ty t - 1) in
   let st_result = match t_result with None -> "result_width - 1" | Some t -> string_of_int (size_ty t - 1) in
   fprintf fmt "signal %s : in value(0 to %s);@," argument st_argument;
-  fprintf fmt "signal %s : out value(0 to %s)" result st_result;
+  fprintf fmt "signal result : out value(0 to %s)" st_result;
 
   begin
     if !Fsm_comp.allow_heap_access || !Fsm_comp.allow_heap_assign then
@@ -371,12 +342,6 @@ architecture rtl of %a is@,@[<v 2>@," pp_ident name;
 
   ArrayType.iter (fun n _ ->
       fprintf fmt "type array_value_%d is array (natural range <>) of value(0 to %d);@," n (n-1)) arty;
-
-  Hashtbl.iter (fun x t ->
-      if x <> result && x <> argument then
-        if not (List.mem x vars) && not (List.mem_assoc x statics) then
-          fprintf fmt "signal %a : %a;@," pp_ident x pp_ty t
-    ) typing_env;
 
   List.iter (fun (x,Static_array(c,n)) ->
           fprintf fmt "signal %a : array_value_%d(0 to %d);@," pp_ident x (size_const c) (n-1);
@@ -403,13 +368,12 @@ architecture rtl of %a is@,@[<v 2>@," pp_ident name;
       | Some s -> Hashtbl.replace var_decls n (x::s)
     in
     Hashtbl.iter (fun x t ->
-        if x <> result && x <> argument && not (List.mem_assoc x statics) then
-          if (List.mem x vars) then
+        if x <> argument && not (List.mem_assoc x statics) then
             add_var x (size_ty t)
       ) typing_env;
 
-     Hashtbl.iter (fun n xs ->
-        fprintf fmt "variable @[<v>@[<hov>%a@]@,: value(0 to %d);@]@," 
+    Hashtbl.iter (fun n xs ->
+        fprintf fmt "variable @[<v>@[<hov>%a@]@,: value(0 to %d);@]@,"
           (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ",@ @,") pp_ident) xs (n-1)
       ) var_decls;
   end;
@@ -426,17 +390,15 @@ architecture rtl of %a is@,@[<v 2>@," pp_ident name;
           fprintf fmt "@]@,%a <= (others => %a);@,@[<hov>" pp_ident x pp_c c
       | None ->
           if x <> argument then
-            let d = default_zero t in
-            if not (List.mem x vars) then
-              fprintf fmt "@]@,%a <= %s;@,@[<hov>" pp_ident x d
-            else fprintf fmt "default_zero(%a);@ @," pp_ident x
+            fprintf fmt "default_zero(%a);@ @," pp_ident x
     ) typing_env;
   fprintf fmt "@]";
 
-  fprintf fmt "@,rdy <= \"1\";@,";
-  fprintf fmt "state <= Compute;@,";
+  fprintf fmt "@,rdy <= \"1\";";
+  fprintf fmt "@,%a := \"0\";@," pp_ident rdy;
+  fprintf fmt "%a <= %a;@," pp_ident state_var pp_ident compute;
 
-  List.iter (fun (_,(sv,cp,xs)) -> fprintf fmt "%a <= %a;@," pp_ident sv pp_ident cp) !Encode.extra_machines;
+  List.iter (fun (_,(sv,cp,xs)) -> fprintf fmt "%a <= %a;@," pp_ident sv pp_ident cp) !List_machines.extra_machines;
 
   fprintf fmt "@]@,@[<v 2>elsif rising_edge(clk) then@,";
 
@@ -451,7 +413,10 @@ architecture rtl of %a is@,@[<v 2>@," pp_ident name;
 
 
 
-  pp_fsm ~restart:false fmt ~state_var ~compute ("main",ts,s);
+  pp_fsm ~restart:false fmt ~state_var ~compute ~rdy ("main",ts,s);
+  
+  fprintf fmt "@,@,result <= %a;@," pp_ident result; 
+  fprintf fmt "rdy <= %a;@," pp_ident rdy; 
 
   fprintf fmt "@]@,end if;
     end if;

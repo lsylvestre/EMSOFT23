@@ -207,6 +207,7 @@ let rec unify ~loc t1 t2 =
   | T_const tc, T_const tc' ->
       unify_tconst tc tc'
   | T_tuple ts, T_tuple ts' ->
+      if List.compare_lengths ts ts' <> 0 then raise (CannotUnify (t1,t2,loc));
       List.iter2 (unify ~loc) ts ts'
   | T_fun{arg;dur;ret},T_fun{arg=a;dur=d;ret=r} ->
       unify ~loc arg a;
@@ -605,7 +606,12 @@ let typing_with_argument ({statics;ds;main} : pi) (arg_list : e list) : ty * ty 
   in
 
   let env = List.fold_left (fun env (x,e) ->
-                               assert (evaluated e || is_variable e);
+                               if not (evaluated e || is_variable e) then begin
+                                let open Prelude.Errors in
+                                  error ~loc:(loc_of e) (fun fmt ->
+                                  Format.fprintf fmt
+                                    "@[<v>This expression should be a value or a variable.@]")
+                               end;
                                let ty,_ = typing ~env e in
                                let sc = generalize (SMap.bindings env) ty in
                                 SMap.add x sc env) env ds

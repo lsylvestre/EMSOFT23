@@ -185,7 +185,7 @@ let rec pp_const (fmt:fmt) (c:c) : unit =
       if !hexa_int_pp_flag then fprintf fmt "0x%x" n else fprintf fmt "%d" n
   | Bool b -> fprintf fmt "%b" b
   | Unit -> fprintf fmt "()"
-  | String s -> fprintf fmt "%s" s
+  | String s -> fprintf fmt "\"%s\"" s
   | Op op ->
      fprintf fmt "(%a)"
         pp_op op
@@ -238,8 +238,7 @@ let rec pp_exp (fmt:fmt) (e:e) : unit =
       fprintf fmt "(@[<v>match %a with@,%a@,| _ -> %a@])"
         pp_exp e
         (pp_print_list
-            ~pp_sep:(fun fmt () -> fprintf fmt ", ")
-            (fun fmt (c,e) -> fprintf fmt "| %a -> %a@," pp_const c pp_exp e))
+            (fun fmt (c,e) -> fprintf fmt "| %a -> %a" pp_const c pp_exp e))
          hs
         pp_exp e_els
   | E_letIn(p,e1,e2) ->

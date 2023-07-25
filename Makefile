@@ -33,7 +33,6 @@ OBJS= src/prelude.cmo \
       src/syntax/ast_mk.cmo \
       src/compile/combinatorial.cmo \
       src/compile/encode_reg_exec.cmo \
-      src/compile/middle_end/matching.cmo \
       src/compile/middle_end/name_anonymus_functions.cmo \
       src/compile/middle_end/anf.cmo \
       src/compile/middle_end/let_floating.cmo \
@@ -46,7 +45,9 @@ OBJS= src/prelude.cmo \
       src/compile/middle_end/rename_main_arg.cmo \
       src/compile/middle_end/move_down_gfun_under_register.cmo \
       src/compile/middle_end/deadcode_elimination.cmo \
+      src/compile/middle_end/matching.cmo \
       src/compile/back_end/target/naming_convention.cmo \
+      src/compile/middle_end/sharing.cmo \
       src/compile/inspect/display_internal_steps.cmo \
       src/compile/middle_end.cmo \
       src/compile/back_end/target/fsm_syntax.cmo \
@@ -55,7 +56,7 @@ OBJS= src/prelude.cmo \
       src/compile/back_end/fsm_comp.cmo \
       src/compile/back_end/flat_transitions.cmo \
       src/compile/back_end/flat_let_atom.cmo \
-      src/compile/back_end/encode.cmo \
+      src/compile/back_end/list_machines.cmo \
       src/compile/back_end/target/gen_vhdl.cmo \
       src/compile/compile.cmo \
       src/compile/test/gen_testbench.cmo\

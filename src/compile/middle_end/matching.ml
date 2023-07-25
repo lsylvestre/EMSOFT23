@@ -31,6 +31,7 @@ open Ast_subst
       | x[xc]
       | x.length
       | x[xc] <- xc
+      | (e || e)
 
   This corresponds to ANF-form with let bindings of the form [let x = e in e]
   rather than [let p = e in e].
@@ -46,14 +47,21 @@ let rec combinatorial = function
 | E_if(e1,e2,e3) ->
     combinatorial e1 && combinatorial e2 && combinatorial e3
 | E_match(e1,hs,e_els) ->
-    combinatorial e1 && List.for_all (fun (_,e) -> combinatorial e) hs && combinatorial e_els
-(*
-| E_app(E_var _,e1)
-| E_app(E_fix _,e1) -> false
-| E_app(E_const(Op op),e2) ->
-    Combinatorial.op_combinatorial op && combinatorial e2*)
-| E_app(e1,e2) ->
+    (* never treated as combinatorial in practice 
+       (even if all subexpression are combinatorial)
+       because code generation would be more complicated *)
     false
+| E_app(e1,e2) ->
+    (match e1 with
+    | E_var _ ->
+        (* Necessarily a tail recursive call (pausing for one tick). 
+           All non-recursive calls have been inligned *)
+        false
+    | E_fix _ -> false 
+    | E_const(Op op) -> Combinatorial.op_combinatorial op && combinatorial e2
+    | _ -> 
+        (* already expanded *)
+        assert false)
 | E_tuple es ->
     List.for_all combinatorial es
 | E_letIn _ | E_fun _ | E_fix _ ->
@@ -95,36 +103,35 @@ let rec matching e =
   | E_deco _ ->
       Ast_undecorated.still_decorated e
   | E_var _ | E_const _ ->
-       e (* no-subexpressions *)
+       (* no-subexpressions *)
+       e
   | E_tuple(es) ->
       E_tuple(List.map matching es)
   | E_app(e1,px) ->
          E_app(matching e1,px)
   | E_if(px,e1,e2) ->
       E_if(px,matching e1,matching e2)
-    | E_match(px,hs,e_els) ->
+  | E_match(px,hs,e_els) ->
       E_match(px,List.map (fun (c,e) -> c,matching e) hs,matching e_els)
-  | E_letIn(P_unit,E_var _,e2) ->
-      matching e2
-  | E_letIn(P_var z,e1,e2) ->
-     E_letIn(P_var z,matching e1,matching e2)
   | E_letIn(p,e1,e2) ->
-      if not (is_projection e1) then
-        let z = gensym () in
-        E_letIn(P_var z,matching e1,matching @@ E_letIn(p,E_var z, e2))
-      else (match p with
-            | P_var z -> (match matching (*?*) e1 with
-                          | E_var _ -> matching @@ subst_e z e1 e2
-                          | _ -> E_letIn(p,e1,matching e2))
-            | P_unit ->
-                let z = Ast.gensym () in
-                E_letIn(P_var z,matching e1,matching e2)
-            | P_tuple(ps) ->
-               matching @@
-               let size = List.length ps in
-               let bs = List.mapi (fun i p ->
-                            p, projection e1 i size) ps in
-                List.fold_right (fun (p,e) acc -> E_letIn(p,e,acc)) bs e2)
+      (match p with
+       | P_unit ->
+          (* == Unit case == *)
+          if combinatorial e1 then matching e2 else 
+          let z = gensym () in
+          matching @@ E_letIn(P_var z,e1,e2)
+       | P_var z ->
+          (* == Var case == *)
+          E_letIn(P_var z,matching e1,matching e2)
+       | P_tuple ps ->
+          (* == Tuple case == *)
+          matching @@
+          if not (is_projection e1) then
+            let z = gensym () in
+            E_letIn(P_var z,e1,E_letIn(p,E_var z, e2))
+          else let size = List.length ps in
+               let bs = List.mapi (fun i p -> p, projection e1 i size) ps in
+               List.fold_right (fun (p,e) acc -> E_letIn(p,e,acc)) bs e2)
   | E_fun(P_var x,e) ->
       E_fun(P_var x,matching e)
   | E_fun(p,e) ->

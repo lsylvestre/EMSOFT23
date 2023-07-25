@@ -30,7 +30,8 @@ package runtime is
     function mixc_lxor (arg : value) return value;
     function mixc_lsl (arg: value) return value;
     function mixc_lsr (arg: value) return value;
-    -- todo add mixc_asr
+    function mixc_asr (arg: value) return value;
+    -- -- todo add mixc_asr
     function of_string (s: string)   return value; 
     function to_string (a: std_logic_vector) return string;
     function integer_of_value(arg: value) return integer; 
@@ -253,6 +254,22 @@ package body runtime is
       r := unsigned(arg(0 to length-1)) srl integer_of_value(arg(length to arg'length - 1));
       return value(r);
     end;
+
+  function mixc_asr (arg: value) return value is
+    constant length: natural := arg'length / 2;
+    variable r : unsigned (0 to length - 1);
+    variable n : integer range 0 to length - 1;
+    variable sign : std_logic;
+    begin
+      n := integer_of_value(arg(length to arg'length - 1));
+      r := unsigned(arg(0 to length-1)) srl n;
+      sign := arg(0);
+      for i in 0 to n loop -- not tested yet
+        r(i) := sign;
+      end loop;
+      return value(r);
+    end;
+
   function mixc_id(arg : value) return value is
     begin 
       return arg;

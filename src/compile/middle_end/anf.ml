@@ -27,6 +27,7 @@ open Pattern
   xc := (xc,xc ... xc)
       | c
       | x
+      | fst x | snd x | ...
 *)
 
 let rec is_xc (e:e) : bool =
@@ -34,6 +35,7 @@ let rec is_xc (e:e) : bool =
   | E_deco(e,_) -> is_xc e
   | E_var _ | E_const _ -> true
   | E_tuple(es) -> List.for_all is_xc es
+  | E_app(E_const(Op(GetTuple _)),e) -> is_xc e
   | _ -> false
 
 (** [plug e ctx] plugs expression [e] into context [ctx], i.e., returns

@@ -79,8 +79,8 @@ let rec unify t1 t2 =
 
 let add_typing_env h (x:string) (t:ty) =
   (match Hashtbl.find_opt h x with
-   | None -> Hashtbl.add h x t
-   | Some t' -> unify t t')
+   | None -> Hashtbl.add h x (canon t)
+   | Some t' -> unify t t'; Hashtbl.replace h x (canon t'))
 
 let typing_c = function
   |  Unit -> TUnit
@@ -170,7 +170,8 @@ let rec typing_a h a =
       TInt ty
 
 let rec typing_s ~result h = function
-  | S_set(_,x,a) ->
+  | S_skip -> ()
+  | S_set(x,a) ->
       let t = typing_a h a in
       (* (Format.fprintf Format.std_formatter "======> (%s : %a)\n" x Fsm_syntax.Debug.pp_ty (canon t)); *)
       add_typing_env h x t
@@ -197,38 +198,34 @@ let rec typing_s ~result h = function
       Option.iter (typing_s ~result h) so
   | S_case(a,hs,os) ->
       let t = typing_a h a in
-      List.iter (fun (c,s) -> unify (typing_c c) t;
-                            typing_s ~result h s) hs;
+      List.iter (fun (c,s) -> 
+          unify (typing_c c) t;
+          typing_s ~result h s) hs;
       (match os with
       | None -> ()
       | Some s_els -> typing_s ~result h s_els)
   | S_seq(s1,s2) ->
-      typing_s  ~result h s1; typing_s  ~result h s2
-  | S_continue(f,a,_) ->
-      let t = typing_a h a in
-      let f_arg = Naming_convention.formal_param_of_fun f in
-      add_typing_env h f_arg t
-  | S_return a ->
-      let t = typing_a h a in
-      add_typing_env h result t
+      typing_s ~result h s1; typing_s ~result h s2
+  | S_continue _ ->
+      ()
   | S_letIn(x,a,s) ->
       (add_typing_env h x (typing_a h a));
       typing_s  ~result h s
-  | S_fsm(_,result2,ts,s,_) ->
-      typing h ~result:result2 (ts,s)
+  | S_fsm(_,rdy,result2,_,ts,s,_) ->
+      typing_fsm h ~rdy ~result:result2 ~ty_result:(new_tvar()) (ts,s)
   | S_let_transitions(ts,s) ->
-      typing h ~result (ts,s)
+      List.iter (fun (q,s) -> typing_s ~result h s) ts;
+      typing_s ~result h s
   | S_print(a) ->
       let _ = typing_a h a in
       ()
 (* typing of an fsm *)
-and typing h ~result (ts,s) =
+and typing_fsm h ~rdy ~result ~ty_result (ts,s) =
+  add_typing_env h rdy TBool;
+  add_typing_env h result ty_result;
   typing_s ~result h s;
   List.iter (fun (q,s) ->
-      (* add_typing_env h q (new_tvar());  *)
-      typing_s ~result h s) ts;
-  let xs = List.map fst ts in
-  List.iter (fun x -> Hashtbl.remove h x) xs
+      typing_s ~result h s) ts
 
 let rec translate_ty t =
   match t with
@@ -247,16 +244,19 @@ let rec translate_ty t =
 | (T_infinity|T_fun _|T_add (_, _)|T_max (_, _)|T_le (_, _)) ->
    assert false (* already expanded *)
 
-let typing_circuit ~statics ty (result,fsm) =
+let typing_circuit ~statics ty (rdy,result,fsm) =
   try
   let h = Hashtbl.create 64 in
 
   List.iter (function x,Static_array(c,n) -> add_typing_env h x (TStatic{elem=typing_c c;size=TSize n})) statics;
 
-  typing h ~result fsm;
+
 
   let t1,t2 = match ty with Ast.T_fun{arg=t1;dur=_;ret=t2} -> t1,t2 | _ -> assert false (* err *)
   in
+  typing_fsm h ~rdy ~result ~ty_result:(translate_ty t2) fsm;
+
+  List.iter (function x,Static_array(c,n) -> add_typing_env h x (TStatic{elem=typing_c c;size=TSize n})) statics;
 
 
   add_typing_env h "argument" (translate_ty @@ Typing.canon t1);   (* NB: does not work without canon *)
