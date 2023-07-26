@@ -4,10 +4,8 @@ open Ast
 
 let op_combinatorial (op:op) : bool =
 	match op with
-	| (Print)
-	| (To_string)
-	| (Random)
-	| (Assert) -> false
+	| Runtime(p) ->
+	    Operators.combinatorial p
 	| _ -> true
 
 

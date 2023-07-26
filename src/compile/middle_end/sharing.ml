@@ -24,8 +24,8 @@ let insert_kont w (x,e) =
         E_match(E_var (Naming_convention.instance_id_of_fun x),
                (List.map (fun (n,k) ->
                            (* Enum (Naming_convention.instance_enum_const n)*)
-                          Int(n,Typing.unknown()),k e
-                  ) l),E_app(E_const(Op Assert),E_const(Bool false)))
+                          Int(n,Types.unknown()),k e
+                  ) l),E_app(E_const(Op(Runtime(Assert))),E_const(Bool false)))
 
   | E_fix(f,(p,e1)) ->
       E_fix (f,(p,aux e1))
@@ -78,7 +78,7 @@ let rec share tail_env (k: e -> e) (e:e) : (_ * e) =
       then SMap.empty,E_app(E_var f,E_tuple[xc;E_var (Naming_convention.instance_id_of_fun f)]) else
       let id = new_instance () in
       let w = SMap.singleton f (IMap.singleton id k) in
-      w,E_app(ef,E_tuple[xc;E_const(Int(id,Typing.unknown()))])
+      w,E_app(ef,E_tuple[xc;E_const(Int(id,Types.unknown()))])
   | E_app _ -> 
       assert false (* already expanded *)
   | E_fix(f,(p,e1)) ->
@@ -87,7 +87,7 @@ let rec share tail_env (k: e -> e) (e:e) : (_ * e) =
       w1,E_fix(f,(P_tuple[p;P_var (Naming_convention.instance_id_of_fun f)],e1'))
   | E_fun(x,e1) ->
       let w1,e1' = share tail_env k e1 in
-      w1,E_fun(x,e1') (* E_tuple[e1';E_const(Int(0,Typing.unknown()))]) *)
+      w1,E_fun(x,e1')
   | E_if(xc,e1,e2) ->
       let w1,e1' = share tail_env k e1 in
       let w2,e2' = share tail_env k e2 in

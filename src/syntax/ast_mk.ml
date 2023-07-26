@@ -1,5 +1,5 @@
 open Ast
-open Typing
+open Types
 
 let main_symbol = ref "main" (* default entry point (a function name) *)
 

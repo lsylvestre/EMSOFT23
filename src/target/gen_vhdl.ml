@@ -66,42 +66,13 @@ let pp_c fmt c =
       begin
         assert false (** should not happen ! *)
       end;
+      if l_pad = 0 then fprintf fmt "X\"%s\"" v else
       fprintf fmt "%s & X\"%s\"" (const_zero l_pad) v
   | Bool b ->
       (* notice: in VHDL, mixc_true(0) is valid, but "1"(0) is invalid. *)
       fprintf fmt "%s" (if b then "mixc_true" else "mixc_false")
   | Enum x -> pp_ident fmt x
   | String s -> fprintf fmt "of_string(\"%s\")" s
-
-(** code generator for operator *)
-let pp_op fmt = function
-| If -> fprintf fmt "mixc_if"
-| Add -> fprintf fmt "mixc_add"
-| Sub -> fprintf fmt "mixc_sub"
-| Mult -> fprintf fmt "mixc_mult"
-| Eq -> fprintf fmt "mixc_eq"
-| Neq -> fprintf fmt "mixc_neq"
-| Lt -> fprintf fmt "mixc_lt"
-| Le -> fprintf fmt "mixc_le"
-| Gt -> fprintf fmt "mixc_gt"
-| Ge -> fprintf fmt "mixc_ge"
-| And -> fprintf fmt "mixc_and"
-| Or -> fprintf fmt "mixc_or"
-| Xor -> fprintf fmt "mixc_xor"
-| Not -> fprintf fmt "mixc_not"
-| Div -> fprintf fmt "mixc_div"
-| Mod -> fprintf fmt "mixc_mod"
-| Land -> fprintf fmt "mixc_land"
-| Lor -> fprintf fmt "mixc_lor"
-| Lxor -> fprintf fmt "mixc_lxor"
-| Lsl -> fprintf fmt "mixc_lsl"
-| Lsr -> fprintf fmt "mixc_lsr"
-| Asr -> fprintf fmt "mixc_asr"
-| TyConstr _ -> fprintf fmt "mixc_id"
-| To_string -> fprintf fmt "mixc_to_string"
-| GetTuple (i,_,_) -> assert false (* special case, defined below (see tuple_access) *)
-| String_length _ -> assert false (* deal with in pp_call*)
-| Compute_address -> assert false (* deal with in pp_call*)
 
 (** code generator for tuples deconstruction *)
 let rec pp_tuple_access fmt (i:int) ty (a:a) : unit =
@@ -148,12 +119,20 @@ let rec pp_tuple_access fmt (i:int) ty (a:a) : unit =
 
 
 (** code generator for call of operator *)
-and pp_call fmt op a =
+and pp_call fmt (op,a) =
   match op with
   | GetTuple(i,_,ty) -> pp_tuple_access fmt i ty a
-  | String_length ty -> pp_c fmt (Int {value=(size_ty ty (* / 8*));tsize=TSize(32)})
   | Compute_address -> fprintf fmt "mixc_compute_address(caml_heap_base,%a)" pp_a a
+  | Runtime p -> Operators.gen_op fmt p pp_a a
   | _ -> fprintf fmt "@[%a(%a)@]" pp_op op pp_a a
+
+(** code generator for operator *)
+and pp_op fmt = function
+| If -> fprintf fmt "mixc_if"
+| Runtime p -> assert false (* deal with in pp_call*)
+| TyConstr _ -> fprintf fmt "mixc_id"
+| GetTuple (i,_,_) -> assert false (* special case, defined below (see tuple_access) *)
+| Compute_address -> assert false (* deal with in pp_call*)
 
 
 (** code generator for atoms (i.e. combinatorial expression) *)
@@ -162,7 +141,7 @@ and pp_a fmt = function
 | A_const c -> pp_c fmt c
 | A_var x -> fprintf fmt "%a" pp_ident x
 | A_call(op,a) ->
-   pp_call fmt op a
+   pp_call fmt (op,a)
 | A_letIn(x,a1,a2) ->
    fprintf fmt "@[%a := %a;@,%a@]" pp_ident x pp_a a1 pp_a a2
 | A_tuple aas -> pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " & ") pp_a fmt aas
@@ -220,8 +199,8 @@ let rec pp_s ~st fmt = function
 | S_let_transitions _ ->
     (* already expanded *)
     assert false
-| S_print(a) ->
-     fprintf fmt "report to_string(%a);@," pp_a a
+| S_call(op,a) ->
+   fprintf fmt "%a;@," pp_call (Runtime(op),a)
 
 (** code generator for FSMs *)
 and pp_fsm fmt ~restart ~state_var:st ~compute ~rdy (id,ts,s) =
@@ -410,7 +389,6 @@ architecture rtl of %a is@,@[<v 2>@," pp_ident name;
            fprintf fmt "%a(%a) <= %a;@]@," pp_ident x pp_ident ("$"^x^"_ptr_write") pp_ident ("$"^x^"_write");
            fprintf fmt "end if;@,";
     ) statics;
-
 
 
   pp_fsm ~restart:false fmt ~state_var ~compute ~rdy ("main",ts,s);

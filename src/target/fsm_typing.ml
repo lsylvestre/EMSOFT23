@@ -82,6 +82,26 @@ let add_typing_env h (x:string) (t:ty) =
    | None -> Hashtbl.add h x (canon t)
    | Some t' -> unify t t'; Hashtbl.replace h x (canon t'))
 
+let rec translate_ty t =
+  match t with
+| Types.T_const(TInt tz) -> TInt (translate_ty tz)
+| Types.T_const(TBool) -> TBool
+| Types.T_const(TUnit) -> TUnit
+| Types.T_tuple(ts) -> TTuple (List.map translate_ty ts)
+| Types.T_var _ -> new_tvar () (* todo: equivalence occurences, i.e., if 'a = 'b, then T['a] = T['b]  *)
+| Types.T_string tz ->
+    (match Typing.canon tz with
+    | T_size n -> TString (TSize (n*8))
+    | T_var _ -> new_tvar()
+    | _ -> assert false) (* TODO *)
+| Types.T_size n -> TSize n
+| Types.T_array n -> TInt (TSize 32)
+| Types.T_static{elem=te;size=tz} -> TStatic{elem=translate_ty te;size=translate_ty tz}
+| Types.(T_infinity|T_fun _|T_add (_, _)|T_max (_, _)|T_le (_, _)) ->
+   assert false (* already expanded *)
+
+
+
 let typing_c = function
   |  Unit -> TUnit
   |  (Int{value=_;tsize=tz}) ->
@@ -94,40 +114,29 @@ let typing_c = function
   |  (String s) -> TString (TSize(String.length s))
 
 let rec typing_op h t op =
-    match op with
-     | (Add|Sub|Mult|Div|Mod|Land|Lor|Lxor|Lsl|Lsr|Asr) ->
-       let tz = new_tvar () in
-       unify (TTuple [TInt tz;TInt tz]) t;
-       TInt tz
-     | (Eq|Neq|Lt|Le|Gt|Ge) ->
-       let tz = new_tvar () in
-       unify (TTuple [TInt tz;TInt tz]) t;
-       TBool
-     | (And|Or|Xor) ->
-         unify (TTuple [TBool;TBool]) t;
-         TBool
-     | Not ->
-        unify t TBool; TBool
-     | If ->
+  match op with
+  | Runtime p ->
+      (match Operators.ty_op p with
+       | Types.T_fun{arg;dur;ret} ->
+          unify (translate_ty arg) t;
+          translate_ty ret
+       | _ -> assert false)
+  | If ->
          let a = new_tvar () in
          unify (TTuple [TBool;a;a]) t;
          a
-     | GetTuple(i,n,ty) ->
+  | GetTuple(i,n,ty) ->
         unify ty t;
         let ts = List.init n (fun _ -> new_tvar()) in
         unify ty (TTuple (ts));
         List.nth ts i
-     | To_string -> assert false
-     | TyConstr ty ->
-         unify ty t;
-         t
-     | String_length tz ->
-         unify (TString tz) t;
-         TInt(new_tvar())
-     | Compute_address ->
-         let w = (new_tvar ()) in
-         unify (TTuple [TInt (TSize 32);TInt w]) t;
-         t
+  | TyConstr ty ->
+      unify ty t;
+      t
+  | Compute_address ->
+      let w = (new_tvar ()) in
+      unify (TTuple [TInt (TSize 32);TInt w]) t;
+      t
 
 
 let trace_last_exp = ref (A_const Unit)
@@ -141,9 +150,6 @@ let rec typing_a h a =
       let t = (new_tvar ()) in
       add_typing_env h x t;
       t
-  | A_call(To_string,a) ->
-       let t = typing_a h a in
-       TString t
   | A_call(op,args) ->
       let t = typing_a h args in
       typing_op h t op
@@ -216,9 +222,10 @@ let rec typing_s ~result h = function
   | S_let_transitions(ts,s) ->
       List.iter (fun (q,s) -> typing_s ~result h s) ts;
       typing_s ~result h s
-  | S_print(a) ->
-      let _ = typing_a h a in
-      ()
+  | S_call(op,args) ->
+      let t = typing_a h args in
+      unify (typing_op h t (Runtime op)) TUnit
+
 (* typing of an fsm *)
 and typing_fsm h ~rdy ~result ~ty_result (ts,s) =
   add_typing_env h rdy TBool;
@@ -227,22 +234,6 @@ and typing_fsm h ~rdy ~result ~ty_result (ts,s) =
   List.iter (fun (q,s) ->
       typing_s ~result h s) ts
 
-let rec translate_ty t =
-  match t with
-| Ast.T_const(TInt tz) -> TInt (translate_ty tz)
-| Ast.T_const(TBool) -> TBool
-| Ast.T_const(TUnit) -> TUnit
-| Ast.T_tuple(ts) -> TTuple (List.map translate_ty ts)
-| Ast.T_var _ -> new_tvar () (* todo: equivalence occurences, i.e., if 'a = 'b, then T['a] = T['b]  *)
-| Ast.T_string tz ->
-    (match Typing.canon tz with
-    | T_size n -> TString (TSize (n*8))
-    | _ -> assert false) (* TODO *)
-| Ast.T_size n -> TSize n
-| Ast.T_array n -> TInt (TSize 32)
-| Ast.T_static{elem=te;size=tz} -> TStatic{elem=translate_ty te;size=translate_ty tz}
-| (T_infinity|T_fun _|T_add (_, _)|T_max (_, _)|T_le (_, _)) ->
-   assert false (* already expanded *)
 
 let typing_circuit ~statics ty (rdy,result,fsm) =
   try
@@ -252,7 +243,7 @@ let typing_circuit ~statics ty (rdy,result,fsm) =
 
 
 
-  let t1,t2 = match ty with Ast.T_fun{arg=t1;dur=_;ret=t2} -> t1,t2 | _ -> assert false (* err *)
+  let t1,t2 = match ty with Types.T_fun{arg=t1;dur=_;ret=t2} -> t1,t2 | _ -> assert false (* err *)
   in
   typing_fsm h ~rdy ~result ~ty_result:(translate_ty t2) fsm;
 

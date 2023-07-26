@@ -1,5 +1,6 @@
 (** Pretty printer for source programs *)
 
+open Types
 open Ast
 
 (** flag [hexa_int_pp_flag]: 
@@ -124,28 +125,8 @@ let pp_op (fmt:fmt) (op:op) : unit =
       fprintf fmt "%s" s
     in
     match op with
-    | Add -> pp_str "+"
-    | Sub -> pp_str "-"
-    | Mult -> pp_str "*"
-    | Le -> pp_str "<="
-    | Lt -> pp_str "<"
-    | Ge -> pp_str ">="
-    | Gt -> pp_str ">"
-    | Eq -> pp_str "=="
-    | Neq -> pp_str "<>"
-    | Not -> pp_str "not"
-    | And -> pp_str "&&"
-    | Or -> pp_str "or"
-    | Mod -> pp_str "mod"
-    | Div -> pp_str "/"
-    | Abs -> pp_str "abs"
-    | Xor  -> pp_str "xor"
-    | Land -> pp_str "land"
-    | Lor -> pp_str "lor"
-    | Lxor -> pp_str "lxor"
-    | Lsl -> pp_str "lsl"
-    | Lsr -> pp_str "lsr"
-    | Asr -> pp_str "asr"
+    | Runtime p ->
+        Operators.pp_op fmt p
     | Wait n ->
         fprintf fmt "wait<%d>" n
     | GetTuple {pos=0;arity=2} ->
@@ -154,16 +135,6 @@ let pp_op (fmt:fmt) (op:op) : unit =
         pp_str "snd"
     | GetTuple {pos=i;arity=_} ->
         fprintf fmt "get_tuple<%d>" i
-    | String_length ->
-        pp_str "string_length"
-    | Assert -> 
-        pp_str "assert"
-    | Random ->
-        pp_str "random"
-    | Print ->
-        pp_str "print"
-    | To_string ->
-        pp_str "to_string"
     | TyConstr ty ->
         fprintf fmt "(as_type %a)@,"  pp_ty ty
 

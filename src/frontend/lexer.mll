@@ -40,7 +40,8 @@
        "lxor", LXOR;
        "lsl", LSL;
        "lsr", LSR;
-       "asr", ASR
+       "asr", ASR;
+       "resize_int", RESIZE_INT;
      ]
 
 

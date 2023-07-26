@@ -9,7 +9,7 @@ let rec flat s =
   | S_setptr _
   | S_setptr_write _
   | S_buffer_set _
-  | S_print _ -> 
+  | S_call _ -> 
       (* no sub-instruction *) [],s
   | S_if(a,s1,so) ->
     let bs1,s1' = flat s1 in

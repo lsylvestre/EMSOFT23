@@ -15,6 +15,7 @@ type token =
   | SEMI
   | RPAREN
   | RIGHT_ARROW
+  | RESIZE_INT
   | REGISTER
   | REC
   | RBRACKET

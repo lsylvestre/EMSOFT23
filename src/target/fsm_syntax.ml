@@ -18,18 +18,12 @@ type c = Unit
        | String of string (* non synthesizable *)
 
 type op = If (* i.e., a multiplexer *)
-        | Add | Sub | Mult
-        | Lt | Gt | Le | Ge | Eq | Neq
-        | Div | Mod
-        | And | Or | Xor | Not
-        | Lxor | Land | Lor | Lsl | Lsr | Asr
+        | Runtime of Operators.op 
         | GetTuple of
             (* (pos,arity,ty) *)
             (* ty is the type of the value from which a field is extracted  *)
              int * int * ty
-        | To_string
         | TyConstr of ty
-        | String_length of ty
         | Compute_address
 
 type global = Static_array of c * int
@@ -61,7 +55,7 @@ type s =
   | S_fsm of id * x * x * q * t list * s (* id * rdy * result * compute * transition * start instruction *)
                 * bool (* <- restart *)
   | S_let_transitions of t list * s
-  | S_print of a (* non synthesizable *)
+  | S_call of Operators.op * a
 
 and t = (x * s)
 
@@ -99,31 +93,9 @@ module Debug = struct
 
   let pp_op fmt = function
   | If -> fprintf fmt "mixc_if"
-  | Add -> fprintf fmt "mixc_add"
-  | Sub -> fprintf fmt "mixc_sub"
-  | Mult -> fprintf fmt "mixc_mult"
-  | Eq -> fprintf fmt "mixc_eq"
-  | Lt -> fprintf fmt "mixc_lt"
-  | Le -> fprintf fmt "mixc_le"
-  | Gt -> fprintf fmt "mixc_gt"
-  | Ge -> fprintf fmt "mixc_ge"
-  | And -> fprintf fmt "mixc_and"
-  | Or -> fprintf fmt "mixc_or"
-  | Xor  -> fprintf fmt "mixc_lxor"
-  | Not -> fprintf fmt "mixc_not"
-  | Neq -> fprintf fmt "mixc_neq"
-  | Div -> fprintf fmt "mixc_div"
-  | Mod -> fprintf fmt "mixc_mod"
-  | Lxor  -> fprintf fmt "mixc_lxor"
-  | Land -> fprintf fmt "mixc_land"
-  | Lor -> fprintf fmt "mixc_lor"
-  | Lsl -> fprintf fmt "mixc_lsl"
-  | Lsr -> fprintf fmt "mixc_lsr"
-  | Asr -> fprintf fmt "mixc_asr"
+  | Runtime p -> Operators.pp_op fmt p
   | GetTuple (i,_,_) -> fprintf fmt "mixc_get_%d" i
-  | To_string -> fprintf fmt "mixc_simul_to_string"
   | TyConstr _ -> fprintf fmt "mixc_id"
-  | String_length ty -> fprintf fmt "mixc_string_length"
   | Compute_address -> fprintf fmt "mixc_compute_address"
 
   let rec pp_a fmt = function
@@ -171,8 +143,8 @@ module Debug = struct
       fprintf fmt "@[<v>((%s) -> %a)%s@]" result pp_fsm (ts,s) (if b then "[restart]" else "")
   | S_let_transitions(ts,s) ->
       pp_fsm fmt (ts,s)
-  | S_print(a) ->
-      fprintf fmt "mixc_print(%a)" pp_a a
+  | S_call(op,a) ->
+     fprintf fmt "@[%a(%a)@]" Operators.pp_op op pp_a a
 
   and pp_fsm fmt (ts,s) =
     let pp_t fmt (x,s) = fprintf fmt "%s = %a@]@," x pp_s s in

@@ -58,7 +58,9 @@ let rec combinatorial = function
            All non-recursive calls have been inligned *)
         false
     | E_fix _ -> false 
-    | E_const(Op op) -> Combinatorial.op_combinatorial op && combinatorial e2
+    | E_const(Op op) -> 
+       (* basically, when true, this expression can be removed (see function [projection]) *)
+        Combinatorial.op_combinatorial op && combinatorial e2
     | _ -> 
         (* already expanded *)
         assert false)

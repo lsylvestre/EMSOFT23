@@ -11,14 +11,16 @@ INCLUDES=-I src -I src/syntax \
          -I src/compile \
          -I src/compile/middle_end \
          -I src/compile/inspect \
-         -I src/compile/back_end \
-         -I src/compile/back_end/target \
-         -I src/compile/back_end/gluecode \
+         -I src/compile/backend \
+         -I src/target \
+         -I src/compile/backend/gluecode \
          -I src/compile/test
 
 MENHIR=menhir --unused-tokens --unused-precedence-levels --infer --ocamlc "$(CAMLC) -i $(INCLUDES)"
 
 OBJS= src/prelude.cmo \
+      src/typing/types.cmo \
+      src/operators.cmo \
       src/syntax/ast.cmo \
       src/syntax/pattern.cmo \
       src/syntax/ast_pprint.cmo \
@@ -46,18 +48,18 @@ OBJS= src/prelude.cmo \
       src/compile/middle_end/move_down_gfun_under_register.cmo \
       src/compile/middle_end/deadcode_elimination.cmo \
       src/compile/middle_end/matching.cmo \
-      src/compile/back_end/target/naming_convention.cmo \
+      src/target/naming_convention.cmo \
       src/compile/middle_end/sharing.cmo \
       src/compile/inspect/display_internal_steps.cmo \
       src/compile/middle_end.cmo \
-      src/compile/back_end/target/fsm_syntax.cmo \
+      src/target/fsm_syntax.cmo \
       src/compile/inspect/display_target.cmo \
-      src/compile/back_end/target/fsm_typing.cmo \
-      src/compile/back_end/fsm_comp.cmo \
-      src/compile/back_end/flat_transitions.cmo \
-      src/compile/back_end/flat_let_atom.cmo \
-      src/compile/back_end/list_machines.cmo \
-      src/compile/back_end/target/gen_vhdl.cmo \
+      src/target/fsm_typing.cmo \
+      src/compile/backend/fsm_comp.cmo \
+      src/compile/backend/flat_transitions.cmo \
+      src/compile/backend/flat_let_atom.cmo \
+      src/compile/backend/list_machines.cmo \
+      src/target/gen_vhdl.cmo \
       src/compile/compile.cmo \
       src/compile/test/gen_testbench.cmo\
       src/interp/norm.cmo \
@@ -66,10 +68,10 @@ OBJS= src/prelude.cmo \
       src/frontend/parser.cmo \
       src/frontend/lexer.cmo \
       src/frontend/frontend.cmo \
-      src/compile/back_end/gluecode/gen_bsp_update_tcl.ml \
-      src/compile/back_end/gluecode/gen_hw_tcl.ml \
-      src/compile/back_end/gluecode/gen_platform_tcl.ml \
-      src/compile/back_end/gluecode/gen_glue_code.ml \
+      src/compile/backend/gluecode/gen_bsp_update_tcl.ml \
+      src/compile/backend/gluecode/gen_hw_tcl.ml \
+      src/compile/backend/gluecode/gen_platform_tcl.ml \
+      src/compile/backend/gluecode/gen_glue_code.ml \
       src/main.cmo
 
 SRCS= `find src -name "*.ml*"`

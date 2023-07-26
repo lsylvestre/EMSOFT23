@@ -1,6 +1,8 @@
 %{
 
   open Prelude
+  open Operators
+  open Types
   open Ast
   open Ast_mk
 
@@ -19,7 +21,7 @@
 %token <bool> BOOL_LIT
 %token <int> INT_LIT
 %token PLUS MINUS TIMES LT LE GT GE NEQ NOT MOD DIV AMP_AMP OR
-%token XOR LAND LOR LXOR LSL LSR ASR
+%token XOR LAND LOR LXOR LSL LSR ASR RESIZE_INT
 %token EOF
 %token SEMI_SEMI
 %token LEFT_ARROW RIGHT_ARROW
@@ -107,7 +109,7 @@ fun_rec_decl(In_kw):
 | REC f=IDENT p_ty_opt=arg_ty_atomic ty_opt=ret_ty_annot_eq e1=exp In_kw
         {
             let p_ty_opt_f =
-              let open Typing in
+              let open Types in
               match p_ty_opt with
               | p,None -> p,None
               | p,Some t -> p,Some (fun_ty t (unknown()) (unknown()))
@@ -132,7 +134,7 @@ ty_annot(X) :
 
 ty:
 | arg=oty IMPLY ret=oty { T_fun{arg;dur=T_size 0;ret} }
-| arg=oty RIGHT_ARROW ret=oty { T_fun{arg;dur=(Typing.unknown());ret} }
+| arg=oty RIGHT_ARROW ret=oty { T_fun{arg;dur=(unknown());ret} }
 | arg=oty MINUS LBRACKET ty=ty RBRACKET RIGHT_ARROW ret=oty { T_fun{arg;dur=ty;ret} }
 | t=oty { t }
 
@@ -151,7 +153,7 @@ aty:
                         | s -> Prelude.Errors.raise_error ~loc:(with_file $loc) ~msg:("unbound type constructor "^s) () }
 | at=aty STATIC LT tz=ty GT { T_static{elem=at;size=tz} }
 | n=INT_LIT           { T_size n }
-| x=TVAR_IDENT { Typing.unknown () } /* TODO: hashmap to constraints occurences */
+| x=TVAR_IDENT { unknown () } /* TODO: hashmap to constraints occurences */
 | LPAREN ty=ty RPAREN { ty }
 
 value:
@@ -267,9 +269,9 @@ app_exp_desc:
 | x=IDENT DOT_LENGTH { E_static_array_length x }
 | x=IDENT LBRACKET e1=exp RBRACKET LEFT_ARROW e2=app_exp { E_static_array_set(x,e1,e2) }
 | e1=aexp e2=aexp { E_app(e1,e2) }
-| MINUS e1=aexp %prec prec_unary_minus { E_app(E_const(Op(Sub)),E_tuple[E_const(Int(0,Typing.unknown()));e1]) }
+| MINUS e1=aexp %prec prec_unary_minus { E_app(E_const(Op(Runtime(Sub))),E_tuple[E_const(Int(0,unknown()));e1]) }
 | e1=app_exp op=binop e2=app_exp
-        { E_app (mk_loc (with_file $loc) @@ E_const (Op op),
+        { E_app (mk_loc (with_file $loc) @@ E_const (Op (Runtime(op))),
                  mk_loc (with_file $loc) @@ E_tuple [e1;e2])
         }
 | e1=app_exp AMP_AMP e2=app_exp
@@ -309,18 +311,22 @@ aexp_desc:
 | LPAREN e=exp COL ty=ty RPAREN { ty_annot ~ty e }
 | c=const { E_const c }
 
+| x=RESIZE_INT LT k=INT_LIT GT { E_const (Op(Runtime(Resize_int k))) }
 | x=IDENT { match x with
-            | "abs" -> E_const (Op Abs)
-            | "print" -> E_const (Op Print)
-            | "to_string" -> E_const (Op To_string)
-            | "string_length" -> E_const (Op String_length)
-            | "random" -> E_const (Op Random)
-            | "assert" -> E_const (Op Assert)
+            | "abs" -> E_const (Op(Runtime(Abs)))
+            | "print" -> E_const (Op(Runtime(Print)))
+            | "print_string" -> E_const (Op(Runtime(Print_string)))
+            | "print_int" -> E_const (Op(Runtime(Print_int)))
+            | "print_newline" -> E_const (Op(Runtime(Print_newline)))
+            | "string_length" -> E_const (Op(Runtime(String_length)))
+            | "assert" -> E_const (Op(Runtime(Assert)))
             | "array_make" -> E_const (External Array_make)
             | "array_length" -> E_const (External Array_length)
             | _ -> E_var x }
 | SHARP_PIPE_LBRACKET separated_list(COMMA,app_exp) PIPE_RBRACKET
     { (* Buffer n *) assert false (*todo*)  }
+
+
 
 pat:
 | p=apat { p }
@@ -336,12 +342,12 @@ const:
 | LPAREN RPAREN { Unit }
 | b=BOOL_LIT { Bool b }
 | n=INT_LIT  {
-    Int (n,Typing.unknown()) }
+    Int (n,unknown()) }
 | LPAREN n=INT_LIT COL ty=ty RPAREN {
     Int (n,ty) }
 | s=STRING_LIT  { String s }
-| NOT { Op Not }
-| LPAREN op=binop RPAREN { Op op }
+| NOT { Op(Runtime(Not)) }
+| LPAREN op=binop RPAREN { Op(Runtime(op)) }
 
 %inline binop:
 | PLUS       { Add }

@@ -63,7 +63,7 @@ let buffer_get x e r =
 let buffer_length x r =
   match SMap.find_opt x r.static with
   | Some a ->
-      Int(Array.length a,Typing.unknown())
+      Int(Array.length a,Types.unknown())
   | None -> assert false (* ill typed *)
 
 
@@ -74,34 +74,33 @@ let app_const e e2 r =
   match c with
   | Op op -> begin
       match op,e2 with
-      | Add,  E_tuple [E_const (Int (n,tz)); E_const (Int (m,tz'))] -> E_const (Int (n+m,T_max(tz,tz'))), r
-      | Sub,  E_tuple [E_const (Int (n,tz)); E_const (Int (m,tz'))] -> E_const (Int (n-m,T_max(tz,tz'))), r
-      | Mult, E_tuple [E_const (Int (n,tz)); E_const (Int (m,tz'))] -> E_const (Int (n*m,T_max(tz,tz'))), r
-      | Div,  E_tuple [E_const (Int (n,tz)); E_const (Int (m,tz'))] -> E_const (Int (n/m,T_max(tz,tz'))), r
-      | Mod,  E_tuple [E_const (Int (n,tz)); E_const (Int (m,tz'))] -> E_const (Int (n mod m,T_max(tz,tz'))), r
-      | Lt,   E_tuple [E_const (Int (n,tz)); E_const (Int (m,tz'))] -> E_const (Bool (n<m)), r
-      | Le,   E_tuple [E_const (Int (n,tz)); E_const (Int (m,tz'))] -> E_const (Bool (n<=m)), r
-      | Gt,   E_tuple [E_const (Int (n,tz)); E_const (Int (m,tz'))] -> E_const (Bool (n>m)), r
-      | Ge,   E_tuple [E_const (Int (n,tz)); E_const (Int (m,tz'))] -> E_const (Bool (n>=m)), r
-      | Eq,   E_tuple [E_const (Int (n,tz)); E_const (Int (m,tz'))] -> E_const (Bool (n==m)), r
-      | Neq,  E_tuple [E_const (Int (n,tz)); E_const (Int (m,tz'))] -> E_const (Bool (n!=m)), r
-      | And,  E_tuple [E_const (Bool a); E_const (Bool b)] -> E_const (Bool (a&&b)), r
-      | Or,  E_tuple  [E_const (Bool a); E_const (Bool b)] -> E_const (Bool (a||b)), r
-      | Not,  E_const (Bool b) -> E_const (Bool (not b)), r
-      | Abs,  E_const (Int (n,tz)) -> E_const (Int (abs n,tz)), r
+      | Runtime(Add),  E_tuple [E_const (Int (n,tz)); E_const (Int (m,tz'))] -> E_const (Int (n+m,T_max(tz,tz'))), r
+      | Runtime(Sub),  E_tuple [E_const (Int (n,tz)); E_const (Int (m,tz'))] -> E_const (Int (n-m,T_max(tz,tz'))), r
+      | Runtime(Mult), E_tuple [E_const (Int (n,tz)); E_const (Int (m,tz'))] -> E_const (Int (n*m,T_max(tz,tz'))), r
+      | Runtime(Div),  E_tuple [E_const (Int (n,tz)); E_const (Int (m,tz'))] -> E_const (Int (n/m,T_max(tz,tz'))), r
+      | Runtime(Mod),  E_tuple [E_const (Int (n,tz)); E_const (Int (m,tz'))] -> E_const (Int (n mod m,T_max(tz,tz'))), r
+      | Runtime(Lt),   E_tuple [E_const (Int (n,tz)); E_const (Int (m,tz'))] -> E_const (Bool (n<m)), r
+      | Runtime(Le),   E_tuple [E_const (Int (n,tz)); E_const (Int (m,tz'))] -> E_const (Bool (n<=m)), r
+      | Runtime(Gt),   E_tuple [E_const (Int (n,tz)); E_const (Int (m,tz'))] -> E_const (Bool (n>m)), r
+      | Runtime(Ge),   E_tuple [E_const (Int (n,tz)); E_const (Int (m,tz'))] -> E_const (Bool (n>=m)), r
+      | Runtime(Eq),   E_tuple [E_const (Int (n,tz)); E_const (Int (m,tz'))] -> E_const (Bool (n==m)), r
+      | Runtime(Neq),  E_tuple [E_const (Int (n,tz)); E_const (Int (m,tz'))] -> E_const (Bool (n!=m)), r
+      | Runtime(And),  E_tuple [E_const (Bool a); E_const (Bool b)] -> E_const (Bool (a&&b)), r
+      | Runtime(Or),  E_tuple  [E_const (Bool a); E_const (Bool b)] -> E_const (Bool (a||b)), r
+      | Runtime(Not),  E_const (Bool b) -> E_const (Bool (not b)), r
+      | Runtime(Abs),  E_const (Int (n,tz)) -> E_const (Int (abs n,tz)), r
+      | Runtime(Print),e ->
+         assert (evaluated e);
+         Format.fprintf Format.std_formatter "==> %a\n" Ast_pprint.pp_exp e; flush stdout; E_const Unit, r
       | GetTuple{pos=i;arity=n}, E_tuple vs ->
           check_bounds ~index:i ~size:n;
           List.nth vs i, r
-      | Print,e ->
-         assert (evaluated e);
-         Format.fprintf Format.std_formatter "==> %a\n" Ast_pprint.pp_exp e; flush stdout; E_const Unit, r
-      | Random,E_const (Int (n,tz)) -> E_const (Int (Random.int n,T_size 32)), r
-      | Assert,E_const (Bool b) -> assert b; E_const Unit, r
+      | Runtime(Assert),E_const (Bool b) -> assert b; E_const Unit, r
       | Wait 0,v ->
           v, r
       | Wait n,v ->
           E_app(E_const(Op(Wait (n-1))),v), r
-      | String_length,E_const(String s) -> E_const(Int (String.length s,T_size 32)), r
+      | Runtime(String_length),E_const(String s) -> E_const(Int (String.length s,T_size 32)), r
       | TyConstr _, v -> v, r
       | _ -> error_cannot_be_reduced (E_app(e,e2))
     end

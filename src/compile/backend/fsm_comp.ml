@@ -27,32 +27,9 @@ let to_c = function
 
 let to_op = function
 | Ast.TyConstr ty -> TyConstr (Fsm_typing.translate_ty ty)
-| Ast.Add -> Add
-| Ast.Sub -> Sub
-| Ast.Mult -> Mult
-| Ast.Div -> Div
-| Ast.Mod -> Mod
-| Ast.Lt -> Lt
-| Ast.Le -> Le
-| Ast.Gt -> Gt
-| Ast.Ge -> Ge
-| Ast.Eq -> Eq
-| Ast.Neq -> Neq
-| Ast.And -> And
-| Ast.Or -> Or
-| Ast.Xor -> Xor
-| Ast.Not -> Not
+| Ast.Runtime p -> Runtime p
 | Ast.GetTuple {pos=i;arity=n} -> GetTuple (i,n,new_tvar())
-| Ast.Print -> assert false
-| Ast.To_string -> To_string
-| Ast.String_length -> String_length (new_tvar())
-| Ast.Lor -> Lor
-| Ast.Land -> Land
-| Ast.Lxor -> Lxor
-| Ast.Lsl -> Lsl
-| Ast.Lsr -> Lsr
-| Ast.Asr -> Asr
-| Ast.(Assert|Abs|Random|Wait _) -> assert false
+| Ast.(Wait _) -> assert false
 
 
 let let_plug_a (a:a) (f : x -> a) : a =
@@ -66,9 +43,6 @@ let rec to_a (e:Ast.e) : a =
   match e with
   | Ast.E_var x -> A_var x
   | Ast.E_const c -> A_const (to_c c)
-  | Ast.E_app(E_const(Op Assert),e) -> 
-      (* currently ignore assertion *)
-      A_const(Unit)
   | Ast.E_app(E_const(Op op),e) ->
       let_plug_a (to_a e) (fun x -> A_call(to_op op,A_var x))
   | Ast.E_if(e1,e2,e3) -> A_call(If,A_tuple [to_a e1;to_a e2;to_a e3])
@@ -87,7 +61,7 @@ let replace_arg e =
 let access ~k ~result (address:a) ~field =
   allow_heap_access := true;
   let q = Ast.gensym ~prefix:"wait_read" () in
-  let t = q, (S_if(A_call(Not,A_var ("avm_rm_waitrequest")),
+  let t = q, (S_if(A_call(Runtime(Not),A_var ("avm_rm_waitrequest")),
                   (seq_ (S_set("avm_rm_read",A_const (Bool false))) @@
                    seq_ (S_set(result,A_var "avm_rm_readdata")) @@ k),
                    Some (S_continue q)))
@@ -103,7 +77,7 @@ let access ~k ~result (address:a) ~field =
 let assign ~k ~result ?(value=A_const Unit) (address:a) ~field data =
   allow_heap_assign := true;
   let q = Ast.gensym ~prefix:"wait_write" () in
-  let t = q, (S_if(A_call(Not,A_var ("avm_wm_waitrequest")),
+  let t = q, (S_if(A_call(Runtime(Not),A_var ("avm_wm_waitrequest")),
                   (seq_ (S_set("avm_wm_write",A_const (Bool false))) @@
                    seq_ (S_set(result,value)) @@
                    k),
@@ -142,26 +116,23 @@ let rec to_s ~statics ~tail x ~rdy ~k e =
   | E_app(E_var f,e) ->
       seq_ (set_ (Naming_convention.formal_param_of_fun f) (to_a e)) @@
       S_continue f
-  | E_app(E_const (Op(Print)),e1) ->
-      return_ @@ S_print(to_a e1)
-  | E_app(E_const (Op(To_string)),e1) ->
-      return_atom (A_call(To_string,to_a e1))
   | E_app(E_const (External(Array_get)),E_tuple[e1;e2]) ->
       let arr = to_a e1 in
       let idx = to_a e2 in
       access ~k ~result:x arr ~field:idx
   | E_app(E_const (External(Array_length)),e1) ->
       let arr = to_a e1 in
-      access ~k ~result:x arr ~field:(A_call(Sub,A_tuple[mk_int 0 32;mk_int 1 32]))
+      access ~k ~result:x arr ~field:(A_call(Runtime(Sub),A_tuple[mk_int 0 32;mk_int 1 32]))
   | E_app(E_const (External(Array_set)),E_tuple[e1;e2;e3]) ->
       let arr = to_a e1 in
       let idx = to_a e2 in
       let v = to_a e3 in
      assign ~k ~result:x arr ~field:idx v
 
-  | E_app(E_const(Op(Assert)),_) ->
-      (* currently ignore assertion *)
-      return_ S_skip 
+  | E_app(E_const(Op(Runtime op)),e) ->
+      (* in case of instantaneous call which is not combinatorial, 
+         e.g., a display function for debug  *)
+      return_ (S_call(op,to_a e))
   | E_app _ ->
       Format.fprintf Format.std_formatter "--> %a\n"  Ast_pprint.pp_exp  e;
       assert false (* computed functions should be eliminated before *)
@@ -184,7 +155,7 @@ let rec to_s ~statics ~tail x ~rdy ~k e =
   | E_lastIn(y,e1,e2) ->
      (* todo: check if e1 is indeed always an atom, or not ? *)
      let s2 = to_s ~statics ~tail x ~rdy ~k e2 in
-     seq_ (S_if (A_call(Not,A_var (y^"_init")),
+     seq_ (S_if (A_call(Runtime(Not),A_var (y^"_init")),
                  seq_ (S_set(y,to_a e1))
                       (S_set(y^"_init",A_const (Bool true))),
                  None)) s2
@@ -222,11 +193,17 @@ let rec to_s ~statics ~tail x ~rdy ~k e =
       let rdy2,result2,compute2,(ts2,s2) = compile pi2 in
       let id1 = Ast.gensym ~prefix:"id" () in
       let id2 = Ast.gensym ~prefix:"id" () in
-      let s1 = S_if(A_call(Not,A_var (id1^"_started")), seq_ (S_set(id1^"_started",A_const (Bool true))) @@ s1,None) in
-      let s2 = S_if(A_call(Not,A_var (id2^"_started")), seq_ (S_set(id2^"_started",A_const (Bool true))) @@ s2,None) in
+      let s1 = S_if(A_call(Runtime(Not),A_var (id1^"_started")), 
+                    seq_ (S_set(id1^"_started",A_const (Bool true))) @@ s1,
+                    None)
+      in
+      let s2 = S_if(A_call(Runtime(Not),A_var (id2^"_started")), 
+                    seq_ (S_set(id2^"_started",A_const (Bool true))) @@ s2,
+                    None)
+      in
       seq_ (S_fsm(id1,rdy1,result1,compute1,ts1,s1,false)) @@
       seq_ (S_fsm(id2,rdy2,result2,compute2,ts2,s2,false)) @@
-      S_if(A_call(And,A_tuple[A_var (rdy1);A_var (rdy2)]),
+      S_if(A_call(Runtime(And),A_tuple[A_var (rdy1);A_var (rdy2)]),
           (seq_ (S_set(x,(A_tuple[A_var result1;A_var result2]))) @@
            seq_ (S_set(id1^"_started",A_const (Bool false))) @@
            seq_ (S_set(id2^"_started",A_const (Bool false))) @@

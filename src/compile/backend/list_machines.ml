@@ -30,7 +30,7 @@ let rec list_machines_s s =
   | S_let_transitions(ts,s) ->
       S_let_transitions(List.map (fun (q,s) -> q, (list_machines_s s)) ts,
                         list_machines_s s)
-  | S_print _ -> s
+  | S_call _ -> s
 
 and list_machines (ts,s) =
  let f s = list_machines_s s in

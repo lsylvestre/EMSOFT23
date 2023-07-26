@@ -1,12 +1,7 @@
+open Types
 open Ast
 
 let pp_ty = Ast_pprint.pp_ty
-
-let unknown =
-  let c = ref 0 in
-  fun () ->
-    let ty = T_var (ref (Unknown (!c))) in
-    incr c; ty
 
 let simplify_size_constraints t =
   let rec simpl t = match t with
@@ -249,10 +244,6 @@ let rec ty_bindings ~loc p t = match p,canon t with
       unify ~loc t (T_tuple (List.map (fun _ -> unknown ()) ps));
       ty_bindings ~loc p t
 
-let tint tz = T_const (TInt tz)
-let tbool = T_const TBool
-let tunit = T_const TUnit
-
 let initial_typing_env = SMap.empty
 
 let env_extend ~loc ?(gen=false) g p scm = (* scm: scheme or type ?? *)
@@ -268,47 +259,21 @@ let typ_ident g x loc =
   | None -> raise (UnboundVariable (x,loc))
   | Some t -> instance t
 
-let fun_ty t1 n t2 =
-  T_fun { arg = t1;
-          dur = n;
-          ret = t2 }
-
-let ty_op ~loc = function
-| Abs ->
-    let tz = unknown() in
-    fun_ty (tint tz) (T_size 0) (tint tz)
-| Add|Sub|Mult|Div|Mod|Land|Lor|Lxor|Lsl|Lsr|Asr ->
-    let tz1 = unknown() in
-    fun_ty (T_tuple[tint tz1;tint tz1]) (T_size 0) (tint tz1)
-| Lt|Gt|Le|Ge|Eq|Neq ->
-    let tz1 = unknown() in
-    fun_ty (T_tuple[tint tz1;tint tz1]) (T_size 0) tbool
-| Not ->
-    fun_ty tbool (T_size 0) tbool
-| And|Or|Xor ->
-    fun_ty (T_tuple[tbool;tbool]) (T_size 0) tbool
-| Print ->
-    fun_ty (unknown()) (T_size 0) tunit
-| To_string ->
-    fun_ty (unknown()) (T_size 0) (T_string (unknown()))
-| Random ->
-    fun_ty (tint (T_size 32)) T_infinity (tint (T_size 32))
-| Assert ->
-    fun_ty tbool (T_size 0) tunit
-| Wait n ->
-    let v = unknown () in
-    fun_ty v (T_size n) v
-| TyConstr ty ->
-   let v = unknown() in
-   unify ~loc ty v;
-   fun_ty ty (T_size 0) v
-| String_length ->
-  let tz_int = unknown () in
-  fun_ty (T_string(unknown ())) (T_size 0) (tint tz_int)
-| GetTuple{pos;arity} ->
-    let ts = List.init arity (fun _ -> unknown ()) in
-    assert (0 <= pos && pos <= arity);
-    fun_ty (group_ts ts) (T_size 0) (List.nth ts pos)
+let ty_op ~loc op =
+  match op with
+  | Runtime p ->
+      Operators.ty_op p
+  | Wait n ->
+      let v = unknown () in
+      fun_ty v (T_size n) v
+  | TyConstr ty ->
+     let v = unknown() in
+     unify ~loc ty v;
+     fun_ty ty (T_size 0) v
+  | GetTuple{pos;arity} ->
+      let ts = List.init arity (fun _ -> unknown ()) in
+      assert (0 <= pos && pos <= arity);
+      fun_ty (group_ts ts) (T_size 0) (List.nth ts pos)
 
 let ty_extern ext =
   let v = unknown() in

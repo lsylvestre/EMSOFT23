@@ -34,9 +34,18 @@ package runtime is
     -- -- todo add mixc_asr
     function of_string (s: string)   return value; 
     function to_string (a: std_logic_vector) return string;
+
     function integer_of_value(arg: value) return integer; 
     function mixc_compute_address(caml_heap_base:value;a:value) return value;
+    
+    function misc_string_length(arg:value) return value;
+    function misc_resize(arg:value; k:integer) return value;
+
     procedure default_zero (xvar: out value);
+    procedure misc_print(arg:value);
+    procedure misc_print_string(arg:value);
+    procedure misc_print_int(arg:value);
+    procedure misc_print_newline(arg:value);
 end package;
 
 package body runtime is
@@ -312,11 +321,66 @@ package body runtime is
         return value(signed(caml_heap_base) + signed(a(0 to 31)) + (signed(a(32 to 63)) * 4));
       end function;
 
+    function misc_string_length(arg:value) return value is
+      begin
+        return std_logic_vector(to_signed(arg'length / 8,16));
+      end;
+
+    function misc_resize(arg:value; k:integer) return value is
+      begin
+         return std_logic_vector(resize(unsigned(arg),k));
+      end;
+
     procedure default_zero (xvar: out value) is
     begin
       for i in 0 to xvar'length - 1 loop
         xvar(0) := '0';
       end loop;
     end procedure;
+
+    procedure echo (arg : in string) is
+    begin
+      std.textio.write(std.textio.output, arg);
+    end procedure echo;
+
+    procedure misc_print(arg:value) is
+      begin
+        echo(to_string(arg));
+      end procedure;
+    
+    function char_of_value(arg : value(0 to 7)) return character is
+    -- from https://groups.google.com/g/comp.lang.vhdl/c/_kI2ZwxVVVk
+    constant xmap :integer :=0;
+    variable TEMP :integer :=0;
+    begin
+      for i in arg'range loop
+        temp:=temp*2;
+        case arg(i) is
+          when '0' | 'L' => null;
+          when '1' | 'H' => temp :=temp+1;
+          when others => temp :=temp+xmap;
+        end case;
+      end loop;
+      return character'val(temp);
+    end function;
+
+    procedure misc_print_string(arg:value) is
+      variable s : string (0 to arg'length / 8);
+      begin
+        for i in 0 to s'length-2 loop
+            s(i) := char_of_value(arg(i*8 to i*8+7));
+        end loop;
+        echo(s);
+      end procedure;
+
+    procedure misc_print_int(arg:value) is
+      begin
+         echo(integer'image(to_integer(signed(arg))));
+      end procedure;
+
+    procedure misc_print_newline(arg:value) is
+      begin
+          echo(" " &LF);
+      end procedure;
 
 end runtime;
