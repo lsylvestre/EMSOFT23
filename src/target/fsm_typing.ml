@@ -249,7 +249,6 @@ let typing_circuit ~statics ty (rdy,result,fsm) =
 
   List.iter (function x,Static_array(c,n) -> add_typing_env h x (TStatic{elem=typing_c c;size=TSize n})) statics;
 
-
   add_typing_env h "argument" (translate_ty @@ Typing.canon t1);   (* NB: does not work without canon *)
   add_typing_env h result (translate_ty @@ Typing.canon t2);
 

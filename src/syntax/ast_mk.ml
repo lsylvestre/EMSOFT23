@@ -27,7 +27,7 @@ let mk_let_fun ~loc ~p_ty_opt ~ty_opt_ret e =
     | p,None -> p,None
     | p,Some t -> p,Some (fun_ty t (unknown()) (unknown()))
   in
-  mk_fun_ty_annot p ty_f_opt (ty_annot_opt ty_opt_ret e)
+  mk_fun_ty_annot p ty_f_opt (ty_annot_opt ~ty:ty_opt_ret e)
   |> mk_loc loc
 
 

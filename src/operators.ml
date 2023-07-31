@@ -108,7 +108,7 @@ let gen_op fmt (op:op) pp a : unit =
   | Or -> funcall @@ "mixc_or"
   | Xor -> funcall @@ "mixc_xor"
   | Not -> funcall @@ "mixc_not"
-  | Abs -> funcall @@ "misc_abs"
+  | Abs -> funcall @@ "mixc_abs"
   | Div -> funcall @@  "mixc_div"
   | Mod -> funcall @@ "mixc_mod"
   | Land -> funcall @@ "mixc_land"
@@ -117,10 +117,10 @@ let gen_op fmt (op:op) pp a : unit =
   | Lsl -> funcall @@ "mixc_lsl"
   | Lsr -> funcall @@ "mixc_lsr"
   | Asr -> funcall @@ "mixc_asr"
-  | Resize_int k -> fprintf fmt "misc_resize(%a,%d)" pp a k 
-  | Print -> procall @@ "misc_print"
-  | Print_string -> procall @@ "misc_print_string"
-  | Print_int -> procall @@ "misc_print_int"
-  | Print_newline -> procall @@ "misc_print_newline"
+  | Resize_int k -> fprintf fmt "mixc_resize(%a,%d)" pp a k 
+  | Print -> procall @@ "mixc_print"
+  | Print_string -> procall @@ "mixc_print_string"
+  | Print_int -> procall @@ "mixc_print_int"
+  | Print_newline -> procall @@ "mixc_print_newline"
   | Assert -> fprintf fmt "assert(%a(0) = '1')" pp a
-  | String_length -> procall @@ "misc_string_length"
+  | String_length -> procall @@ "mixc_string_length"

@@ -65,8 +65,10 @@ let rec pat2exp (p:p) : e =
   | P_tuple ps ->
       E_tuple (List.map pat2exp ps)
 
+exception Not_a_pattern
+
 (** [exp2pat e] converts the expression [e] into a pattern.
-    Raises [Invalid_argument "exp2pat"] if the expression [e] cannot 
+    Raises [Not_a_pattern] if the expression [e] cannot 
     be converted into a pattern *)
 let rec exp2pat (e:e) : p =
   match e with
@@ -76,5 +78,5 @@ let rec exp2pat (e:e) : p =
       P_var x
   | E_tuple ps ->
       P_tuple (List.map exp2pat ps)
-  | _ -> invalid_arg "exp2pat"
+  | _ -> raise Not_a_pattern
 

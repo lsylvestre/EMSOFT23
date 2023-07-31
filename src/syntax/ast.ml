@@ -114,6 +114,9 @@ module SMap = Map.Make(String)
 type 'a smap = 'a SMap.t
 type 'a env = 'a SMap.t
 
+type set = unit SMap.t
+
+
 (** [m1 + m2] merges the bindings from [m1] and [m2]. In case of conflict, 
    the bindings from [m2] is keeped. *)
 let (++) (m1 : 'a smap) (m2 : 'a smap)  : 'a smap =

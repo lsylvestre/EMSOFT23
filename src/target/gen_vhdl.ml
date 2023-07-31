@@ -60,14 +60,18 @@ let pp_c fmt c =
   match c with
   | Unit -> fprintf fmt "mixc_unit"
   | Int {value=n;tsize} ->
+      let is_neg = n < 0 in
+      let n = abs n in
       let v = Printf.sprintf "%x" n in
       let l_pad = size_ty tsize - String.length v * 4 in
       if l_pad < 0 then
       begin
         assert false (** should not happen ! *)
       end;
+      if is_neg then fprintf fmt "mixc_neg(";
       if l_pad = 0 then fprintf fmt "X\"%s\"" v else
-      fprintf fmt "%s & X\"%s\"" (const_zero l_pad) v
+      fprintf fmt "%s & X\"%s\"" (const_zero l_pad) v;
+      if is_neg then fprintf fmt ")";
   | Bool b ->
       (* notice: in VHDL, mixc_true(0) is valid, but "1"(0) is invalid. *)
       fprintf fmt "%s" (if b then "mixc_true" else "mixc_false")
@@ -111,8 +115,14 @@ let rec pp_tuple_access fmt (i:int) ty (a:a) : unit =
 
   match tuple_access i ty a with
   | `Slice(a,j,k) ->
+      if j = k then
+        (* this case is use to avoid a strange failure (a GHDL bug ?) 
+           during simulation (overflow detected)
+           when using slice x(j to k) of size 1 (i.e., j = k) *)
+        fprintf fmt "\"\"&%a(%d)" pp_a a j
+      else
       let pp_slice fmt (j,k) =
-         fprintf fmt "%d to %d" j k
+        fprintf fmt "%d to %d" j k
       in
       fprintf fmt "%a(%a)" pp_a a pp_slice (j,k)
   | `Atom(a) -> pp_a fmt a

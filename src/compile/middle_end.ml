@@ -12,7 +12,6 @@ let compile (pi:pi) : pi =
 
   (** put the program in ANF-form *)
   let pi = Anf.anf_pi pi in
-
   display_pi Anf pi;
 
   assert (Anf.in_anf_pi pi);
@@ -23,36 +22,37 @@ let compile (pi:pi) : pi =
 
   assert (Anf.in_anf_pi pi);
 
+  (** eliminating higher-order functions *)
+  let pi = Specialize.specialize_pi pi in
+  let pi = Ast_rename.rename_pi pi in
+  display_pi Specialize pi;
+
+  let pi = Anf.anf_pi pi in
   let pi = Lambda_lifting.lambda_lifting_pi pi in
   display_pi Lambda_lifting pi;
 
-  (** eliminating higher-order functions *)
-  let pi = Specialize.specialize_pi pi in
-
-  display_pi Specialize pi;
+  (* let _ = Typing.typing_with_argument pi [_] in *)
 
   (* replicates toplevel definition within certain constructs *)
   let pi = Move_down_gfun_under_register.move_down_gfun_under_register_pi pi in
 
   let pi = Ast_rename.rename_pi pi in
   let pi = Ast_ensure_rec_naming.ensure_rec_naming_pi pi in 
-
-  (* let pi = Anf.anf_pi pi in *)
   
   (** inlining of instantaneous functions *)
+  
   let pi = Inline.inl_pi pi in
+  let pi = Ast_rename.rename_pi pi in
   display_pi Inline pi;
-
+  
   let pi = Deadcode_elimination.deadcode_elimination_pi pi in
-
-  let pi = Sharing.sharing_pi pi in
-  display_pi Sharing pi;
 
   let pi = Anf.anf_pi pi in
 
   let pi = Matching.matching_pi pi in
   display_pi Matching pi;
-
+  
+  let pi = Anf.anf_pi pi in
   let pi = Propagation.propagation_pi pi in
 
   (** filtering [pi.ds] to keep-only functions needed by [pi.main] (and their dependancies).
@@ -61,5 +61,9 @@ let compile (pi:pi) : pi =
 
   (* put a fresh name to each register *)
   let pi = Instantiate.instantiate_pi pi in
+
+  let pi = Sharing.sharing_pi pi in
+  display_pi Sharing pi;
+
 
   pi

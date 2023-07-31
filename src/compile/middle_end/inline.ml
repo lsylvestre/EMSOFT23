@@ -1,5 +1,4 @@
 open Ast
-open Pattern
 open Ast_subst
 
 (* inline a program given in ANF, lambda-lifted form. The resulting program is
@@ -31,7 +30,7 @@ let rec simplify e =
       E_fix(f,(p,simplify e))
   | E_app(E_fun(p,e1),e2) ->
      (* substitution is needed (rather than a let-binding)
-        since e2 could be a function (fun x -> e3) *)
+        since e2 could be a function (fun x -> e3)          (* no, first ordr now *) *)
      simplify @@ subst_p_e p e2 e1
   | E_app(e1,e2) ->
       E_app(simplify e1,simplify e2)
@@ -65,7 +64,7 @@ let rec inl (ds,e) =
     | [] ->
        List.rev_map (fun (x,e) -> x,simplify e) recd_and_globals, simplify e
     | (x,(E_fix(f,(p,ef))))::fs' ->
-        assert (not (pat_mem f p));
+        assert (not (Pattern.pat_mem f p));
         aux ((x,E_fix(x,(p,subst_e f (E_var x) ef)))::recd_and_globals) fs' e
     | (x,(E_fun _ as ex))::ds' -> (* super-static environment *)
        let ss e = (subst_e x ex e) in

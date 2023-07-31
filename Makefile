@@ -4,6 +4,8 @@ CAMLDEP=ocamldep
 
 EXE=mixc
 
+FLAGS=
+
 INCLUDES=-I src -I src/syntax \
          -I src/frontend \
          -I src/typing \
@@ -68,6 +70,7 @@ OBJS= src/prelude.cmo \
       src/frontend/parser.cmo \
       src/frontend/lexer.cmo \
       src/frontend/frontend.cmo \
+      src/frontend/clean_simul.ml \
       src/compile/backend/gluecode/gen_bsp_update_tcl.ml \
       src/compile/backend/gluecode/gen_hw_tcl.ml \
       src/compile/backend/gluecode/gen_platform_tcl.ml \
@@ -104,7 +107,7 @@ prepare:  vhdl
 	mkdir -p vhdl/bsp
 	mkdir -p vhdl/qsys
 
-NS=1000
+NS=2000
 
 simul:
 	cd vhdl; make NS=$(NS)

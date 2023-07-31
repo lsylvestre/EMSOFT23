@@ -32,19 +32,12 @@ let to_op = function
 | Ast.(Wait _) -> assert false
 
 
-let let_plug_a (a:a) (f : x -> a) : a =
-  match a with
-  | A_var x -> f x
-  | _ ->
-    let y = Ast.gensym () in
-    A_letIn(y,a,f y)
-
 let rec to_a (e:Ast.e) : a =
   match e with
   | Ast.E_var x -> A_var x
   | Ast.E_const c -> A_const (to_c c)
   | Ast.E_app(E_const(Op op),e) ->
-      let_plug_a (to_a e) (fun x -> A_call(to_op op,A_var x))
+      A_call(to_op op,to_a e)
   | Ast.E_if(e1,e2,e3) -> A_call(If,A_tuple [to_a e1;to_a e2;to_a e3])
   | Ast.E_tuple(es) -> A_tuple (List.map to_a es)
   | Ast.E_letIn(P_var x,e1,e2) -> A_letIn(x,to_a e1,to_a e2)
@@ -101,7 +94,7 @@ let let_plug_s (a:a) (f : x -> s) : s =
 let rec to_s ~statics ~tail x ~rdy ~k e =
   let return_ s =
     let s = seq_ s k in
-    if tail then seq_ s (S_set(rdy, A_const (Bool true))) else s
+    if tail then seq_ (S_set(rdy, A_const (Bool true))) s else s
   in
   let return_atom a =
     return_ (S_set(x, a))
@@ -129,10 +122,10 @@ let rec to_s ~statics ~tail x ~rdy ~k e =
       let v = to_a e3 in
      assign ~k ~result:x arr ~field:idx v
 
-  | E_app(E_const(Op(Runtime op)),e) ->
+  | E_app(E_const(Op(Runtime op)),e1) ->
       (* in case of instantaneous call which is not combinatorial, 
          e.g., a display function for debug  *)
-      return_ (S_call(op,to_a e))
+      return_ (S_call(op,to_a e1))
   | E_app _ ->
       Format.fprintf Format.std_formatter "--> %a\n"  Ast_pprint.pp_exp  e;
       assert false (* computed functions should be eliminated before *)
@@ -151,7 +144,10 @@ let rec to_s ~statics ~tail x ~rdy ~k e =
   | E_match(e1,hs,e_els) ->
       let hs' = List.map (fun (c,e) -> to_c c, to_s ~statics ~tail x ~rdy ~k e) hs in 
       let s_els = to_s ~statics ~tail x ~rdy ~k e_els in
-      S_case(to_a e1,hs',Some s_els) 
+      let y = Ast.gensym () in
+      (* use a let-binding because this expression must be locally static in VHDL. TODO: enforce to be a variable in the grammar *) 
+      S_letIn(y,to_a e1,
+              S_case(A_var y,hs',Some s_els))
   | E_lastIn(y,e1,e2) ->
      (* todo: check if e1 is indeed always an atom, or not ? *)
      let s2 = to_s ~statics ~tail x ~rdy ~k e2 in

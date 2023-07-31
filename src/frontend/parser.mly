@@ -59,7 +59,7 @@ pi:
 | EOF { [],[] }
 
 static:
-| LET STATIC x=IDENT EQ c=const HAT n=INT_LIT SEMI_SEMI { x,Static_array(c,n) }
+| LET STATIC x=IDENT EQ c=const_with_neg_int HAT n=INT_LIT SEMI_SEMI { x,Static_array(c,n) }
 
 exp_eof:
 | e=exp EOF {e}
@@ -116,7 +116,7 @@ fun_rec_decl(In_kw):
             in
             let loc_fun = with_file ($startpos(f),$endpos(e1)) in
             let (p,ty_f_opt) = p_ty_opt_f in
-            let ef = mk_fun_ty_annot p ty_f_opt (ty_annot_opt ty_opt e1)
+            let ef = mk_fun_ty_annot p ty_f_opt (ty_annot_opt ~ty:ty_opt e1)
                    |> mk_loc loc_fun in
             P_var f, mk_fix f ef loc_fun
         }
@@ -268,7 +268,13 @@ app_exp_desc:
 | x=IDENT LBRACKET e1=exp RBRACKET { E_static_array_get(x,e1) }
 | x=IDENT DOT_LENGTH { E_static_array_length x }
 | x=IDENT LBRACKET e1=exp RBRACKET LEFT_ARROW e2=app_exp { E_static_array_set(x,e1,e2) }
-| e1=aexp e2=aexp { E_app(e1,e2) }
+| e=aexp  es=aexp+ { match e::es with
+                    | [e1;e2] -> (match un_annot e1 with 
+                                  | E_var _|E_const _ -> E_app(e1,e2)
+                                  | _ -> Prelude.Errors.raise_error ~loc:(with_file $loc)
+                               ~msg:"expression in functional position should be a variable or a constante" ())
+                    | _ -> Prelude.Errors.raise_error ~loc:(with_file $loc)
+                               ~msg:"All functions and primitives should be unary. Hints: use a tuple as argument" () }
 | MINUS e1=aexp %prec prec_unary_minus { E_app(E_const(Op(Runtime(Sub))),E_tuple[E_const(Int(0,unknown()));e1]) }
 | e1=app_exp op=binop e2=app_exp
         { E_app (mk_loc (with_file $loc) @@ E_const (Op (Runtime(op))),
@@ -338,13 +344,18 @@ apat:
 | LPAREN p=pat RPAREN { p }
 | x=IDENT { P_var x }
 
+
+const_with_neg_int:
+| c=const | LPAREN c=const_with_neg_int RPAREN  { c }
+| MINUS n=INT_LIT { Int(- n,unknown()) }
+
 const:
 | LPAREN RPAREN { Unit }
 | b=BOOL_LIT { Bool b }
 | n=INT_LIT  {
     Int (n,unknown()) }
-| LPAREN n=INT_LIT COL ty=ty RPAREN {
-    Int (n,ty) }
+| LPAREN o=MINUS? n=INT_LIT COL ty=ty RPAREN {
+    Int ((if o = None then n else - n),ty) }
 | s=STRING_LIT  { String s }
 | NOT { Op(Runtime(Not)) }
 | LPAREN op=binop RPAREN { Op(Runtime(op)) }

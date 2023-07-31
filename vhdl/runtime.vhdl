@@ -10,6 +10,7 @@ package runtime is
     constant mixc_unit : value(0 to 0)  := "1";
     function mixc_add  (arg: value)  return value;
     function mixc_sub  (arg: value)  return value;
+    function mixc_neg  (arg: value)  return value;
     function mixc_mult (arg: value)  return value;
     function mixc_div  (arg: value)  return value;
     function mixc_mod  (arg: value)  return value;
@@ -38,17 +39,48 @@ package runtime is
     function integer_of_value(arg: value) return integer; 
     function mixc_compute_address(caml_heap_base:value;a:value) return value;
     
-    function misc_string_length(arg:value) return value;
-    function misc_resize(arg:value; k:integer) return value;
+    function mixc_string_length(arg:value) return value;
+    function mixc_resize(arg:value; k:integer) return value;
 
     procedure default_zero (xvar: out value);
-    procedure misc_print(arg:value);
-    procedure misc_print_string(arg:value);
-    procedure misc_print_int(arg:value);
-    procedure misc_print_newline(arg:value);
+    procedure mixc_print(arg:value);
+    procedure mixc_print_string(arg:value);
+    procedure mixc_print_int(arg:value);
+    procedure mixc_print_newline(arg:value);
 end package;
 
 package body runtime is
+  
+  procedure echo (arg : in string) is
+    begin
+      std.textio.write(std.textio.output, arg);
+    end procedure echo;
+
+  function of_string(s: string) return value is 
+        constant ss: string(1 to s'length) := s; 
+        variable answer: std_logic_vector(0 to 8 * s'length - 1); 
+        variable p: integer; 
+        variable c: integer; 
+    begin 
+        for i in ss'range loop
+            p := 8 * i;
+            c := character'pos(ss(i));
+            answer(p - 8 to p-1) := std_logic_vector(to_unsigned(c,8)); 
+        end loop; 
+        return answer;
+    end function; 
+
+  function to_string (a: std_logic_vector) return string is
+    variable b : string (1 to a'length) := (others => NUL);
+    variable stri : integer := 1; 
+    begin
+        for i in a'range loop
+            b(stri) := std_logic'image(a((i)))(2);
+        stri := stri+1;
+        end loop;
+    return b;
+    end function;
+
   function mixc_add (arg: value) return value is
     constant length: natural := arg'length / 2;
     variable r : signed (0 to length - 1);
@@ -62,6 +94,13 @@ package body runtime is
     variable r : signed (0 to length - 1);
     begin
       r := signed(arg(0 to length-1)) - signed(arg(length to arg'length - 1)); 
+      return value(r);
+    end;
+
+  function mixc_neg (arg: value) return value is
+    variable r : signed (0 to arg'length-1);
+    begin
+      r := 0 - signed(arg); 
       return value(r);
     end;
 
@@ -208,14 +247,12 @@ package body runtime is
     end;
 
   function mixc_not(arg : value) return value is
-    variable r : value (0 to 0);
-    begin 
-      if arg(0) = '1' then
-        r := "0";
-      else
-        r := "1";
-      end if;
-      return r;
+    variable r : signed (0 to arg'length - 1);
+    begin
+      for i in 0 to arg'length-1 loop
+        r(i) := not arg(i);
+      end loop;
+      return value(r);
     end;
 
   function mixc_lor (arg: value) return value is
@@ -251,8 +288,10 @@ package body runtime is
   function mixc_lsl (arg: value) return value is
     constant length: natural := arg'length / 2;
     variable r : unsigned (0 to length - 1);
+    variable n : natural range 0 to length - 1;
     begin
-      r := unsigned(arg(0 to length-1)) sll integer_of_value(arg(length to arg'length - 1));
+      n := integer_of_value(arg(length to arg'length - 1));
+      r := unsigned(arg(0 to length-1)) sll n;
       return value(r);
     end;
 
@@ -284,31 +323,6 @@ package body runtime is
       return arg;
     end;
 
-  function of_string(s: string) return value is 
-        constant ss: string(1 to s'length) := s; 
-        variable answer: std_logic_vector(0 to 8 * s'length - 1); 
-        variable p: integer; 
-        variable c: integer; 
-    begin 
-        for i in ss'range loop
-            p := 8 * i;
-            c := character'pos(ss(i));
-            answer(p - 8 to p-1) := std_logic_vector(to_unsigned(c,8)); 
-        end loop; 
-        return answer;
-    end function; 
-
-  function to_string (a: std_logic_vector) return string is
-    variable b : string (1 to a'length) := (others => NUL);
-    variable stri : integer := 1; 
-    begin
-        for i in a'range loop
-            b(stri) := std_logic'image(a((i)))(2);
-        stri := stri+1;
-        end loop;
-    return b;
-    end function;
-
     function integer_of_value(arg: value) return integer is
       variable r : unsigned (0 to arg'length - 1);
     begin 
@@ -321,12 +335,12 @@ package body runtime is
         return value(signed(caml_heap_base) + signed(a(0 to 31)) + (signed(a(32 to 63)) * 4));
       end function;
 
-    function misc_string_length(arg:value) return value is
+    function mixc_string_length(arg:value) return value is
       begin
         return std_logic_vector(to_signed(arg'length / 8,16));
       end;
 
-    function misc_resize(arg:value; k:integer) return value is
+    function mixc_resize(arg:value; k:integer) return value is
       begin
          return std_logic_vector(resize(unsigned(arg),k));
       end;
@@ -338,12 +352,7 @@ package body runtime is
       end loop;
     end procedure;
 
-    procedure echo (arg : in string) is
-    begin
-      std.textio.write(std.textio.output, arg);
-    end procedure echo;
-
-    procedure misc_print(arg:value) is
+    procedure mixc_print(arg:value) is
       begin
         echo(to_string(arg));
       end procedure;
@@ -364,7 +373,7 @@ package body runtime is
       return character'val(temp);
     end function;
 
-    procedure misc_print_string(arg:value) is
+    procedure mixc_print_string(arg:value) is
       variable s : string (0 to arg'length / 8);
       begin
         for i in 0 to s'length-2 loop
@@ -373,12 +382,12 @@ package body runtime is
         echo(s);
       end procedure;
 
-    procedure misc_print_int(arg:value) is
+    procedure mixc_print_int(arg:value) is
       begin
          echo(integer'image(to_integer(signed(arg))));
       end procedure;
 
-    procedure misc_print_newline(arg:value) is
+    procedure mixc_print_newline(arg:value) is
       begin
           echo(" " &LF);
       end procedure;

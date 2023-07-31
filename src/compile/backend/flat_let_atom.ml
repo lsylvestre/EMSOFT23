@@ -61,7 +61,9 @@ let rec flat_s s =
       S_fsm(id,rdy,result,compute,List.map (fun (x,s) -> x,flat_s s) ts, flat_s s,b)
   | S_let_transitions(ts,s) ->
       S_let_transitions(List.map (fun (x,s) -> x,flat_s s) ts, flat_s s)
-  | S_call(op,a) -> S_call(op,flat_a a)
+  | S_call(op,a) ->
+      let bs,a' = flat a in
+      s_let_bindings bs @@ S_call(op,a')
 
 let flat_let_atom (ts,s) =
   List.map (fun (x,s) -> x,flat_s s) ts, flat_s s

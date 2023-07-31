@@ -44,11 +44,13 @@ let lifting ~statics ~decls (env:env) (e:e) : e =
     | E_const _ ->
         e
     | E_fun _ | E_fix _ ->
-        e
+        let f = gensym () in
+        E_letIn(P_var f,e,E_var f) |> lift env
     | E_app(E_const _,xc2) ->
         assert (Anf.is_xc xc2);
         e
     | E_app(E_var f,e1) ->
+
         (match SMap.find_opt f env with
          | None | Some (P_unit) -> E_app(E_var f,e1)
          | Some p ->
@@ -79,20 +81,21 @@ let lifting ~statics ~decls (env:env) (e:e) : e =
         if f <> g then let e1' = Ast_subst.subst_e g (E_var f) e1 in
                         let e2' = Ast_subst.subst_e g (E_var f) e2 in
                         lift env (E_letIn(P_var f,(E_fix(f,(p,e1'))),e2'))
-        else
-        let e1' = lift env e1 in
+        else (
         let xs = fv ~statics ~decls phi in
         let vp = (vars_of_p p) in
         let p_env' = xs |> SMap.filter (fun x _ -> not (SMap.mem x vp) && not (SMap.mem x env) && x <> f)
                         |> SMap.bindings
                         |> List.map (fun (x,_) -> P_var x)
                         |> group_ps in
+        let env' = SMap.add f p_env' env in
+        let e1' = lift env' e1 in
         if not (SMap.is_empty (vars_of_p p_env')) then (has_changed := true;
-          let env2,ef = (SMap.add f p_env' env, E_fix(f,(P_tuple[p;p_env'],e1'))) in
-          E_letIn(P_var f,ef,lift env2 e2) )
+          let env' = SMap.add f p_env' env in
+          let ef = E_fix(f,(P_tuple[p;p_env'],e1')) in
+          E_letIn(P_var f,ef,lift env' e2) )
          else
-          (let env2 = SMap.add f p_env' env in
-           E_letIn(P_var f,(E_fix(f,(p,e1'))),lift env2 e2) )
+          (E_letIn(P_var f,(E_fix(f,(p,e1'))),lift env' e2) ) )
     | E_letIn(p,e1,e2) ->
         E_letIn(p,lift env e1,lift env e2)
     | E_tuple es_atoms ->
@@ -112,7 +115,7 @@ let lifting ~statics ~decls (env:env) (e:e) : e =
         assert(Anf.is_xc e2);
         e
     | E_step(e1,k) ->
-        E_step(lift env e1,k)
+        E_step((* lift env e1*) e1,k) (* ??? *)
          | E_par _ -> e (* do not transform sub-expressions under step and // *)
     | E_reg _ | E_exec _ ->
         assert false (* already expanded *)
@@ -204,7 +207,12 @@ let lambda_lifting_pi (pi:pi) : pi =
         let (ds,e) = lambda_lifting ~statics ~decls:acc pi.main in
         {pi with ds = List.rev_append acc ds ; main = e }
     | (x,e)::ds_to_lambda_lift' ->
-            let (ds,e') = lambda_lifting ~statics ~decls:acc e in
+            let ds,e' = (match lambda_lifting ~statics ~decls:acc e with
+                         | ds,(E_var _ as e') ->
+                            let z = gensym () in
+                       
+                            ds,E_fun(P_var z, E_app(e',E_var z)) (*      let u = gensym () inE_letIn(P_var u,E_const Unit, E_tuple[E_var z;E_var u]))) *)
+                         | ds,e' -> ds,e') in
             loop (List.rev_append (ds@[(x,e')]) acc) ds_to_lambda_lift'
   in loop [] pi.ds
 

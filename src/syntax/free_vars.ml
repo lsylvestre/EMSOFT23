@@ -1,13 +1,16 @@
 
 open Ast
 
+let fv_var xs x =
+  if SMap.mem x xs then SMap.empty else SMap.singleton x ()
+
 let fv ?(xs=SMap.empty) e =
   let open Ast in
   let rec aux xs = function
   | E_deco(e,_) ->
       aux xs e
   | E_var x ->
-      if SMap.mem x xs then SMap.empty else SMap.singleton x ()
+      fv_var xs x
   | E_const _ ->
       SMap.empty
   | E_if(e1,e2,e3) ->
@@ -41,7 +44,7 @@ let fv ?(xs=SMap.empty) e =
       let xs' = SMap.add x () xs in
       aux xs e1 ++ aux xs' e2
   | E_set(x,e1) ->
-      SMap.add x () @@ aux xs e1
+      fv_var xs x ++ aux xs e1
   | E_static_array_get(x,e1) ->
       SMap.add x () @@ aux xs e1
   | E_static_array_length(x) ->

@@ -13,6 +13,7 @@ let show_ast_and_exit_flag = ref false
 let interp_flag = ref false
 let top_flag = ref false
 let relax_flag = ref false
+let simul_flag = ref true
 
 let arguments = ref ""
 
@@ -60,6 +61,10 @@ let () =
     ("-relax",   Arg.Set relax_flag,
                  "allow the main function to be non-instantaneous (such program is no longer reactive!)");
 
+    ("-synth",   Arg.Clear simul_flag,
+                 "remove simulation primitives like assert and print (after typing)");
+
+
     ("-bus",     Arg.Set_int Interp.flag_bus_proba,
                 "[for -interp mode only] set the probability to wait a new\
                  \ clock tick during a bus transation");
@@ -92,6 +97,8 @@ let main () : unit =
     Format.fprintf Format.std_formatter "@,%a\n" pp_ty ty;
     exit 0;
   end;
+
+  let pi = if !simul_flag then pi else Clean_simul.clean_pi pi in
 
   (** remove all decorations (locations) in the source program *)
   let (pi, arg_list) =

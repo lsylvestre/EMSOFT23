@@ -6,6 +6,7 @@ let op_combinatorial (op:op) : bool =
 	match op with
 	| Runtime(p) ->
 	    Operators.combinatorial p
+	| GetTuple _ -> true
 	| _ -> true
 
 

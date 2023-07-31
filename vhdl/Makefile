@@ -9,7 +9,7 @@ RUNTIME=runtime.vhdl
 
 
 
-NS=200
+NS=2000
 
 vhdl.run: $(RUNTIME) $(MAIN) tb_$(NAME).vhdl
 	$(GHDL) -a $(GHDLOPTS) $(RUNTIME)

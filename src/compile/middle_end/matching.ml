@@ -57,12 +57,15 @@ let rec combinatorial = function
         (* Necessarily a tail recursive call (pausing for one tick). 
            All non-recursive calls have been inligned *)
         false
+    | E_fun(_,e) ->
+        combinatorial e
     | E_fix _ -> false 
     | E_const(Op op) -> 
        (* basically, when true, this expression can be removed (see function [projection]) *)
         Combinatorial.op_combinatorial op && combinatorial e2
-    | _ -> 
+    | _ ->
         (* already expanded *)
+        Ast_pprint.pp_exp Format.std_formatter e1;
         assert false)
 | E_tuple es ->
     List.for_all combinatorial es
@@ -124,6 +127,7 @@ let rec matching e =
           matching @@ E_letIn(P_var z,e1,e2)
        | P_var z ->
           (* == Var case == *)
+          if combinatorial e1 then matching (Ast_subst.subst_e z e1 e2) else
           E_letIn(P_var z,matching e1,matching e2)
        | P_tuple ps ->
           (* == Tuple case == *)

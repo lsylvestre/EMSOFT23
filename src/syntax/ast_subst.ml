@@ -62,17 +62,19 @@ let rec subst_e x ex e =
   | E_static_array_set(y,e1,e2) ->
       let z = if x <> y then y else as_ident ex in
       E_static_array_set(z,ss e1,ss e2)
-  | E_step(e,k) ->
+  | E_step(e1,k) ->
       (* [k] is in a different name space than variables *)
-      E_step(ss e,k)
+      E_step(ss e1,k)
   | E_par(e1,e2) ->
       E_par(ss e1, ss e2)
 
 
 let rec map_subst_p (ss : (x -> e -> 'a -> 'a)) (p:p) (ep:e) (o:'a) : 'a =
+    (* Format.(fprintf std_formatter "---> %a  %a\n"  Ast_pprint.pp_exp (pat2exp p) Ast_pprint.pp_exp ep); *)
   let m = bindings p ep in
   SMap.fold (fun x ex o -> ss x ex o) m o
 
 
-let subst_p_e p ep o = map_subst_p subst_e p ep o
+let subst_p_e p ep o =
+  map_subst_p subst_e p ep o
 

@@ -1,5 +1,9 @@
 open Ast
 
+(* instable module: asume that pattern matching have already been eliminated.
+  Resulting expression is not well-typed: all local declarations (let) are
+  seen as global, and all toplevel declaration are mutual recursive. *)
+
 module IMap = Map.Make(Int)
 
 let (+++) s1 s2 =  IMap.union (fun _ _ v2 -> Some v2) s1 s2
@@ -80,11 +84,15 @@ let rec share tail_env (k: e -> e) (e:e) : (_ * e) =
       let w = SMap.singleton f (IMap.singleton id k) in
       w,E_app(ef,E_tuple[xc;E_const(Int(id,Types.unknown()))])
   | E_app _ -> 
+      Ast_pprint.pp_exp Format.std_formatter e;
       assert false (* already expanded *)
   | E_fix(f,(p,e1)) ->
       let tail_env' = SMap.add f () tail_env in
       let w1,e1' = share tail_env' k e1 in
-      w1,E_fix(f,(P_tuple[p;P_var (Naming_convention.instance_id_of_fun f)],e1'))
+      let y = gensym () in
+      w1,E_fix(f,(P_var y,E_letIn(p,E_app(E_const(Op(GetTuple{pos=0;arity=2})),E_var y),
+                          E_letIn(P_var (Naming_convention.instance_id_of_fun f),
+                                  E_app(E_const(Op(GetTuple{pos=1;arity=2})),E_var y),e1'))))
   | E_fun(x,e1) ->
       let w1,e1' = share tail_env k e1 in
       w1,E_fun(x,e1')
