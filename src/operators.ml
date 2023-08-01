@@ -1,4 +1,8 @@
 
+let flag_no_assert = ref false
+let flag_no_print = ref false
+
+
 (* instantaneous primitives which do not require an encoding *)
 type op =
   | Add | Sub | Mult | Div | Mod
@@ -89,38 +93,50 @@ let pp_op fmt (op:op) : unit =
   | Assert -> "assert"
   | String_length -> "string_length"
 
+
+
 (** code generator for operators *)
 let gen_op fmt (op:op) pp a : unit =
   let open Format in
-  let funcall s = fprintf fmt "%s(%a)" s pp a in
-  let procall s = fprintf fmt "%s(%a)" s pp a in
+  let funcall fmt s = fprintf fmt "%s(%a)" s pp a in
+  let procall fmt s = fprintf fmt "%s(%a)" s pp a in
+  let skip_when b fmt f a =
+    if b then fprintf fmt "mixc_skip(misc_unit)" 
+    else f fmt a in
   match op with
-  | Add -> funcall @@ "mixc_add"
-  | Sub -> funcall @@ "mixc_sub"
-  | Mult -> funcall @@ "mixc_mult"
-  | Eq -> funcall @@ "mixc_eq"
-  | Neq -> funcall @@ "mixc_neq"
-  | Lt ->  funcall @@ "mixc_lt"
-  | Le -> funcall @@ "mixc_le"
-  | Gt -> funcall @@ "mixc_gt"
-  | Ge -> funcall @@ "mixc_ge"
-  | And -> funcall @@ "mixc_and"
-  | Or -> funcall @@ "mixc_or"
-  | Xor -> funcall @@ "mixc_xor"
-  | Not -> funcall @@ "mixc_not"
-  | Abs -> funcall @@ "mixc_abs"
-  | Div -> funcall @@  "mixc_div"
-  | Mod -> funcall @@ "mixc_mod"
-  | Land -> funcall @@ "mixc_land"
-  | Lor -> funcall @@ "mixc_lor"
-  | Lxor -> funcall @@ "mixc_lxor"
-  | Lsl -> funcall @@ "mixc_lsl"
-  | Lsr -> funcall @@ "mixc_lsr"
-  | Asr -> funcall @@ "mixc_asr"
-  | Resize_int k -> fprintf fmt "mixc_resize(%a,%d)" pp a k 
-  | Print -> procall @@ "mixc_print"
-  | Print_string -> procall @@ "mixc_print_string"
-  | Print_int -> procall @@ "mixc_print_int"
-  | Print_newline -> procall @@ "mixc_print_newline"
-  | Assert -> fprintf fmt "assert(%a(0) = '1')" pp a
-  | String_length -> procall @@ "mixc_string_length"
+  | Add -> funcall fmt "mixc_add"
+  | Sub -> funcall fmt "mixc_sub"
+  | Mult -> funcall fmt "mixc_mult"
+  | Eq -> funcall fmt "mixc_eq"
+  | Neq -> funcall fmt "mixc_neq"
+  | Lt ->  funcall fmt "mixc_lt"
+  | Le -> funcall fmt "mixc_le"
+  | Gt -> funcall fmt "mixc_gt"
+  | Ge -> funcall fmt "mixc_ge"
+  | And -> funcall fmt "mixc_and"
+  | Or -> funcall fmt "mixc_or"
+  | Xor -> funcall fmt "mixc_xor"
+  | Not -> funcall fmt "mixc_not"
+  | Abs -> funcall fmt "mixc_abs"
+  | Div -> funcall fmt "mixc_div"
+  | Mod -> funcall fmt "mixc_mod"
+  | Land -> funcall fmt "mixc_land"
+  | Lor -> funcall fmt "mixc_lor"
+  | Lxor -> funcall fmt "mixc_lxor"
+  | Lsl -> funcall fmt "mixc_lsl"
+  | Lsr -> funcall fmt "mixc_lsr"
+  | Asr -> funcall fmt "mixc_asr"
+  | Resize_int k -> 
+      fprintf fmt "mixc_resize(%a,%d)" pp a k 
+  | Print -> 
+      skip_when !flag_no_print fmt procall "mixc_print"
+  | Print_string ->
+      skip_when !flag_no_print fmt procall "mixc_print_string"
+  | Print_int ->
+      skip_when !flag_no_print fmt procall "mixc_print_int"
+  | Print_newline ->
+      skip_when !flag_no_print fmt procall "mixc_print_newline"
+  | Assert ->
+      skip_when !flag_no_assert fmt procall "mixc_skip"
+  | String_length ->
+      procall fmt "mixc_string_length"

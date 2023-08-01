@@ -16,17 +16,19 @@ let relax_flag = ref false
 let simul_flag = ref true
 
 let arguments = ref ""
+let top_wrapper = ref ""
+let clock_top = ref "clk"
 
 (* main configuration *)
 let () =
   let add_input (f:string) : unit =
-  inputs := !inputs @ [f]
+    inputs := !inputs @ [f]
   in
   Arg.parse [
     ("-main",    Arg.Set_string Ast_mk.main_symbol,
                  "entry point (a function name)");
 
-    ("-top",     Arg.Set top_flag,
+    ("-toploop", Arg.Set top_flag,
                  "Interaction loop");
 
     ("-int",     Arg.Int Fix_int_lit_size.set_size,
@@ -61,15 +63,19 @@ let () =
     ("-relax",   Arg.Set relax_flag,
                  "allow the main function to be non-instantaneous (such program is no longer reactive!)");
 
-    ("-synth",   Arg.Clear simul_flag,
-                 "remove simulation primitives like assert and print (after typing)");
-
+    ("-noassert",   Arg.Set Operators.flag_no_assert, "remove assertion after typing");
+    ("-noprint",   Arg.Set Operators.flag_no_print, "remove printing primitives after typing");
 
     ("-bus",     Arg.Set_int Interp.flag_bus_proba,
                 "[for -interp mode only] set the probability to wait a new\
                  \ clock tick during a bus transation");
+    
+    ("-top",     Arg.Set_string top_wrapper,
+                "generate a top wrapper for the whole architecture");
+    ("-clk-top", Arg.Set_string clock_top,
+                "name of the top wrapper global clock");
     ]
-      add_input "Usage:\n  ./mixlang file"
+      add_input "Usage:\n  ./mixc file"
 ;;
 
 let main () : unit =
@@ -98,7 +104,7 @@ let main () : unit =
     exit 0;
   end;
 
-  let pi = if !simul_flag then pi else Clean_simul.clean_pi pi in
+  let pi = if Operators.(!flag_no_assert || !flag_no_print) then Clean_simul.clean_pi pi else pi in
 
   (** remove all decorations (locations) in the source program *)
   let (pi, arg_list) =
@@ -135,6 +141,12 @@ let main () : unit =
   close_out oc_vhdl;
   close_out oc_tb ;
 
+
+  if !top_wrapper <> "" then
+    Make_top.gen_wrapper ~argument
+                         ~result
+                         ~clock:!clock_top 
+                         ~dst:"vhdl/synth/top.vhdl" !top_wrapper
 
 
 ;;

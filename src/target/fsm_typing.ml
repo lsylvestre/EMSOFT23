@@ -83,14 +83,14 @@ let add_typing_env h (x:string) (t:ty) =
    | Some t' -> unify t t'; Hashtbl.replace h x (canon t'))
 
 let rec translate_ty t =
-  match t with
+  match Types.canon t with
 | Types.T_const(TInt tz) -> TInt (translate_ty tz)
 | Types.T_const(TBool) -> TBool
 | Types.T_const(TUnit) -> TUnit
 | Types.T_tuple(ts) -> TTuple (List.map translate_ty ts)
 | Types.T_var _ -> new_tvar () (* todo: equivalence occurences, i.e., if 'a = 'b, then T['a] = T['b]  *)
 | Types.T_string tz ->
-    (match Typing.canon tz with
+    (match Types.canon tz with
     | T_size n -> TString (TSize (n*8))
     | T_var _ -> new_tvar()
     | _ -> assert false) (* TODO *)
@@ -249,8 +249,8 @@ let typing_circuit ~statics ty (rdy,result,fsm) =
 
   List.iter (function x,Static_array(c,n) -> add_typing_env h x (TStatic{elem=typing_c c;size=TSize n})) statics;
 
-  add_typing_env h "argument" (translate_ty @@ Typing.canon t1);   (* NB: does not work without canon *)
-  add_typing_env h result (translate_ty @@ Typing.canon t2);
+  add_typing_env h "argument" (translate_ty @@ Types.canon t1);   (* NB: does not work without canon *)
+  add_typing_env h result (translate_ty @@ Types.canon t2);
 
   h
 

@@ -3,61 +3,6 @@ open Ast
 
 let pp_ty = Ast_pprint.pp_ty
 
-let simplify_size_constraints t =
-  let rec simpl t = match t with
-  | T_size _ | T_infinity -> t
-  | T_add(t1,t2) ->
-      (match simpl t1, simpl t2 with
-      | T_add(ta,tb),t -> simpl @@ T_add(ta,T_add(tb,t))
-      | T_size n,T_add(T_size m,tb) -> simpl @@ T_add(T_size (n+m),tb)
-      | T_var _ as t1',t2'
-      | t2',(T_var _ as t1') -> T_add(t2',t1')
-      | T_size n,T_size m -> T_size (n+m)
-      | T_infinity,T_size _
-      | T_infinity,T_infinity
-      | T_size _ , T_infinity -> T_infinity
-      | t,T_size 0 | T_size 0,t -> t
-      | t1',t2' -> T_add(t1',t2'))
-  | T_max(t1,t2) ->
-      (match simpl t1, simpl t2 with
-      | T_size n,T_size m -> T_size (max n m)
-      | T_infinity,T_size _
-      | T_infinity,T_infinity
-      | T_size _ , T_infinity -> T_infinity
-      | t,T_size 0 | T_size 0,t -> t
-      | t1',t2' -> T_max(t1',t2'))
-  | T_le _ -> failwith "todo T_le"
-  | T_var({contents=Ty t'} as v) ->
-      let t2 = simpl t' in
-      v := Ty t2; t2
-  | T_var{contents=Unknown _} ->
-      t
-  | _ -> assert false (* hill kinded *)
-  in simpl t
-
-(** [canon t] put the type [t] in canonical form by replacing
-  instantiated variables free in [t] by their definition,
-  themselves put in canonical form. *)
-let rec canon t =
-  match t with
-  | T_const _ -> t
-  | T_var({contents=Ty t'} as v) ->
-      let t2 = canon t' in
-      v := Ty t2; t2
-  | T_var{contents=Unknown _} ->
-      t
-  | T_tuple (ts) ->
-      T_tuple (List.map canon ts)
-  | T_fun{arg;dur;ret} ->
-      T_fun{ arg = canon arg;
-             dur = canon dur;
-             ret = canon ret }
-  | T_array t -> T_array (canon t)
-  | T_string tz -> T_string (canon tz)
-  | T_static {elem=t;size=tz} -> T_static {elem=canon t;size=canon tz}
-  | (T_size _ | T_infinity | T_add _ | T_max _ | T_le _) as t -> simplify_size_constraints t
-
-
 let rec occur v ty =
   let exception Found in
   let rec f = function
@@ -288,8 +233,7 @@ let ty_extern ext =
       fun_ty (T_array v) T_infinity (tint (T_size 32))
 
 let typ_const ~loc = function
-| Int _ -> (* TODO, add a type constraint according to the size of the literal *)
-    let tz = unknown () in
+| Int(_,tz) -> (* TODO, add a type constraint according to the size of the literal *)
     tint tz
 | Bool _ -> tbool
 | Unit -> tunit
@@ -380,6 +324,7 @@ let is_TyConstr = function
 let trace_last_exp = ref (E_const Unit) (* fake *)
 
 let rec typ_exp ~toplevel ~loc (g:env) e =
+  (* (fun v -> Ast_pprint.pp_exp Format.std_formatter e; v) @@ *)(
   trace_last_exp := e;
   match e with
   | E_deco(e,loc) -> typ_exp ~toplevel ~loc g e
@@ -515,7 +460,7 @@ let rec typ_exp ~toplevel ~loc (g:env) e =
       let t2,n2 = typ_exp ~toplevel:false ~loc g' e2 in
       unify ~loc n2 Response_time.zero;
       (t2, Response_time.zero)
-
+)
 let typing_handler ?(msg="") f () =
   let open Prelude.Errors in
   try

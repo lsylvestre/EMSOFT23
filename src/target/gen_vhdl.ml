@@ -343,11 +343,7 @@ architecture rtl of %a is@,@[<v 2>@," pp_ident name;
 
   fprintf fmt "@,@[<v 2>begin@,";
 
-  List.iter (fun (x,Static_array(c,n)) ->
-           fprintf fmt "@,%a <= %a(%a);@,@," pp_ident ("$"^x^"_value") pp_ident x pp_ident ("$"^x^"_ptr");
-    ) statics;
-
-  fprintf fmt "@[<v 2>process(reset, clk)@,";
+  fprintf fmt "@[<v 2>process(clk)@,";
 
   begin
     let var_decls = Hashtbl.create 10 in
@@ -362,15 +358,18 @@ architecture rtl of %a is@,@[<v 2>@," pp_ident name;
       ) typing_env;
 
     Hashtbl.iter (fun n xs ->
-        fprintf fmt "variable @[<v>@[<hov>%a@]@,: value(0 to %d);@]@,"
+        (* Notice there is a default value ``0'' *)
+        fprintf fmt "variable @[<v>@[<hov>%a@]@,: value(0 to %d) := (others => '0');@]@,"
           (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ",@ @,") pp_ident) xs (n-1)
       ) var_decls;
   end;
 
   fprintf fmt "@]@,@[<v 2>begin@,";
 
-  fprintf fmt "@[<v 2>if (reset = '1') then@,";
 
+  fprintf fmt "@,@[<v 2>if rising_edge(clk) then@,";
+
+  fprintf fmt "@[<v 2>if (reset = '1') then@,";
 
   fprintf fmt "@[<hov>";
    Hashtbl.iter (fun x t ->
@@ -389,15 +388,16 @@ architecture rtl of %a is@,@[<v 2>@," pp_ident name;
 
   List.iter (fun (_,(sv,cp,xs)) -> fprintf fmt "%a <= %a;@," pp_ident sv pp_ident cp) !List_machines.extra_machines;
 
-  fprintf fmt "@]@,@[<v 2>elsif rising_edge(clk) then@,";
 
-  fprintf fmt "@[<v 2>if run = '1' then@,";
+  fprintf fmt "@]@,@[<v 2>else if run = '1' then@,";
 
 
   List.iter (fun (x,Static_array(c,n)) ->
            fprintf fmt "@,@[<v 2>if %a = '1' then@," pp_ident ("$"^x^"_write_request");
            fprintf fmt "%a(%a) <= %a;@]@," pp_ident x pp_ident ("$"^x^"_ptr_write") pp_ident ("$"^x^"_write");
-           fprintf fmt "end if;@,";
+           fprintf fmt "@,@[<v 2>else";
+             fprintf fmt "@,%a <= %a(%a);@,@]" pp_ident ("$"^x^"_value") pp_ident x pp_ident ("$"^x^"_ptr");
+           fprintf fmt "@]end if;@,";
     ) statics;
 
 
@@ -407,6 +407,7 @@ architecture rtl of %a is@,@[<v 2>@," pp_ident name;
   fprintf fmt "rdy <= %a;@," pp_ident rdy; 
 
   fprintf fmt "@]@,end if;
+      end if;
     end if;
   end process;
 end architecture;@]\n";

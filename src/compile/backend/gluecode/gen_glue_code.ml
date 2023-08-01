@@ -235,5 +235,7 @@ let gen_glue_code ?labels ?xs_opt () =
   pp_print_flush fmt ();
   close_out bsp_update_script_oc;
 
-  Printf.printf "  info: circuit  \"%s\"  generated in folder vhdl/.\n" name
-    
+  Printf.printf "  info: circuit  \"%s\"  generated in folder vhdl/.\n" name;
+  
+  set_formatter_out_channel stdout
+

@@ -129,10 +129,11 @@ let rec to_s ~statics ~tail x ~rdy ~k e =
   | E_app _ ->
       Format.fprintf Format.std_formatter "--> %a\n"  Ast_pprint.pp_exp  e;
       assert false (* computed functions should be eliminated before *)
-  | E_letIn(p,e1,e2) ->
+  | E_letIn(p,e1,e2) -> 
       (match p with
        | P_var y ->
           let s2 = to_s ~statics ~tail x ~rdy ~k e2 in
+          if combinatorial e1 then S_letIn(y,to_a e1,s2) else
           let s1 = to_s ~statics ~tail:false y ~rdy ~k:s2 e1 in
           s1
        | _ -> assert false (* already exanded *)
@@ -207,9 +208,8 @@ let rec to_s ~statics ~tail x ~rdy ~k e =
   | E_reg _ | E_exec _ ->
       assert false (* already expanded *)
 
-(* takes a program composed of global recursive (non-mutual)
+(* takes a program composed of global (non-mutual) recursive
    functions [ds] and an entry point [e] and translates it into a FSM *)
-
 and compile pi =
   let open Ast in
   let statics = pi.statics in

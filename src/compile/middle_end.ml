@@ -52,6 +52,8 @@ let compile (pi:pi) : pi =
   let pi = Matching.matching_pi pi in
   display_pi Matching pi;
   
+  let pi = Propagate_global_constant.propagate_global_constant_pi pi in
+
   let pi = Anf.anf_pi pi in
   let pi = Propagation.propagation_pi pi in
 

@@ -50,6 +50,7 @@ OBJS= src/prelude.cmo \
       src/compile/middle_end/move_down_gfun_under_register.cmo \
       src/compile/middle_end/deadcode_elimination.cmo \
       src/compile/middle_end/matching.cmo \
+      src/compile/middle_end/propagate_global_constant.cmo \
       src/target/naming_convention.cmo \
       src/compile/middle_end/sharing.cmo \
       src/compile/inspect/display_internal_steps.cmo \
@@ -75,6 +76,7 @@ OBJS= src/prelude.cmo \
       src/compile/backend/gluecode/gen_hw_tcl.ml \
       src/compile/backend/gluecode/gen_platform_tcl.ml \
       src/compile/backend/gluecode/gen_glue_code.ml \
+      src/target/make_top.cmo \
       src/main.cmo
 
 SRCS= `find src -name "*.ml*"`

@@ -152,7 +152,7 @@ let pp_external (fmt:fmt) (op:extern) : unit =
 (** pretty printer for constants *)
 let rec pp_const (fmt:fmt) (c:c) : unit =
   match c with
-  | Int (n,_) ->
+  | Int (n,tz) ->
       if !hexa_int_pp_flag then fprintf fmt "0x%x" n else fprintf fmt "%d" n
   | Bool b -> fprintf fmt "%b" b
   | Unit -> fprintf fmt "()"
