@@ -8,6 +8,7 @@ package runtime is
     constant mixc_true : value(0 to 0) := "1";
     constant mixc_false : value(0 to 0)  := "0";
     constant mixc_unit : value(0 to 0)  := "1";
+    procedure mixc_skip (arg : in value);
     function mixc_add  (arg: value)  return value;
     function mixc_sub  (arg: value)  return value;
     function mixc_neg  (arg: value)  return value;
@@ -50,7 +51,11 @@ package runtime is
 end package;
 
 package body runtime is
-  
+
+    procedure mixc_skip (arg : in value) is
+      begin
+      end procedure;
+
   procedure echo (arg : in string) is
     begin
       std.textio.write(std.textio.output, arg);
@@ -136,7 +141,7 @@ package body runtime is
       if signed(arg(0 to length-1)) = signed(arg(length to arg'length - 1)) then
         r := "1";
       else
-        r:= "0";
+        r := "0";
       end if;
       return r;
     end;
@@ -148,7 +153,7 @@ package body runtime is
         if signed(arg(0 to length-1)) = signed(arg(length to arg'length - 1)) then
           r := "0";
         else
-          r:= "1";
+          r := "1";
         end if;
         return r;
       end;
@@ -160,7 +165,7 @@ package body runtime is
       if signed(arg(0 to length-1)) < signed(arg(length to arg'length - 1)) then
         r := "1";
       else
-        r:= "0";
+        r := "0";
       end if;
       return r;
     end;
@@ -172,7 +177,7 @@ package body runtime is
       if signed(arg(0 to length-1)) > signed(arg(length to arg'length - 1)) then
         r := "1";
       else
-        r:= "0";
+        r := "0";
       end if;
       return r;
     end;
@@ -184,7 +189,7 @@ package body runtime is
       if signed(arg(0 to length-1)) <= signed(arg(length to arg'length - 1)) then
         r := "1";
       else
-        r:= "0";
+        r := "0";
       end if;
       return r;
     end;
@@ -306,14 +311,15 @@ package body runtime is
   function mixc_asr (arg: value) return value is
     constant length: natural := arg'length / 2;
     variable r : unsigned (0 to length - 1);
-    variable n : integer range 0 to length - 1;
+    constant n : integer range 0 to length - 1 := integer_of_value(arg(length to arg'length - 1));
     variable sign : std_logic;
     begin
-      n := integer_of_value(arg(length to arg'length - 1));
       r := unsigned(arg(0 to length-1)) srl n;
       sign := arg(0);
-      for i in 0 to n loop -- not tested yet
-        r(i) := sign;
+      for i in 0 to arg'length - 1 loop -- not yet tested
+        if i > n then
+          r(i) := sign;
+        end if;
       end loop;
       return value(r);
     end;

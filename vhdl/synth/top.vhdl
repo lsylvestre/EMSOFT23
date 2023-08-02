@@ -39,6 +39,14 @@ architecture rtl of top is
             end if;
         end process;
 argument <= "" & usr_btn;
+main_CC : component main
+        port map (clk => clk48,
+                  run => '1',
+                  reset => RST,
+                  rdy => ready,
+                  argument => argument,
+                  result => result
+                  );
 rgb_led0_r <= result(0);
 rgb_led0_g <= result(1);
 rgb_led0_b <= result(2);

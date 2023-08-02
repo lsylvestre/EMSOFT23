@@ -5,9 +5,7 @@
   Generation of a VHDL wrapper module "top" for synthesis 
   on an OrangeCrab FPGA board :
 
-   ./mixc examples/blink.ml \ 
-          -clk-top=clk48 \
-          -top "usr_btn:1|rgb_led0_r:1,rgb_led0_g:1,rgb_led0_b:1"
+   ./mixc examples/blink.ml -clk-top=clk48 -top "usr_btn:1|rgb_led0_r:1,rgb_led0_g:1,rgb_led0_b:1"
 
 *)
 

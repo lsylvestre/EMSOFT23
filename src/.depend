@@ -108,6 +108,7 @@ src/compile/middle_end.cmo : \
     src/compile/middle_end/specialize.cmo \
     src/compile/middle_end/sharing.cmo \
     src/compile/middle_end/propagation.cmo \
+    src/compile/middle_end/propagate_global_constant.cmo \
     src/compile/middle_end/name_anonymus_functions.cmo \
     src/compile/middle_end/move_down_gfun_under_register.cmo \
     src/compile/middle_end/matching.cmo \
@@ -125,6 +126,7 @@ src/compile/middle_end.cmx : \
     src/compile/middle_end/specialize.cmx \
     src/compile/middle_end/sharing.cmx \
     src/compile/middle_end/propagation.cmx \
+    src/compile/middle_end/propagate_global_constant.cmx \
     src/compile/middle_end/name_anonymus_functions.cmx \
     src/compile/middle_end/move_down_gfun_under_register.cmx \
     src/compile/middle_end/matching.cmx \
@@ -238,6 +240,12 @@ src/compile/middle_end/name_anonymus_functions.cmx : \
     src/syntax/ast_undecorated.cmx \
     src/syntax/ast_subst.cmx \
     src/syntax/ast.cmx
+src/compile/middle_end/propagate_global_constant.cmo : \
+    src/syntax/ast_subst.cmo \
+    src/syntax/ast.cmo
+src/compile/middle_end/propagate_global_constant.cmx : \
+    src/syntax/ast_subst.cmx \
+    src/syntax/ast.cmx
 src/compile/middle_end/propagation.cmo : \
     src/syntax/map_pi.cmo \
     src/compile/combinatorial.cmo \
@@ -338,6 +346,8 @@ src/interp/norm.cmx : \
 src/main.cmo : \
     src/typing/typing.cmo \
     src/prelude.cmo \
+    src/operators.cmo \
+    src/target/make_top.cmo \
     src/interp/interp.cmo \
     src/compile/test/gen_testbench.cmo \
     src/compile/backend/gluecode/gen_glue_code.cmo \
@@ -354,6 +364,8 @@ src/main.cmo : \
 src/main.cmx : \
     src/typing/typing.cmx \
     src/prelude.cmx \
+    src/operators.cmx \
+    src/target/make_top.cmx \
     src/interp/interp.cmx \
     src/compile/test/gen_testbench.cmx \
     src/compile/backend/gluecode/gen_glue_code.cmx \
@@ -440,14 +452,12 @@ src/target/fsm_syntax.cmo : \
 src/target/fsm_syntax.cmx : \
     src/operators.cmx
 src/target/fsm_typing.cmo : \
-    src/typing/typing.cmo \
     src/typing/types.cmo \
     src/prelude.cmo \
     src/operators.cmo \
     src/target/fsm_syntax.cmo \
     src/frontend/fix_int_lit_size.cmo
 src/target/fsm_typing.cmx : \
-    src/typing/typing.cmx \
     src/typing/types.cmx \
     src/prelude.cmx \
     src/operators.cmx \
@@ -467,6 +477,12 @@ src/target/gen_vhdl.cmx : \
     src/target/fsm_typing.cmx \
     src/target/fsm_syntax.cmx \
     src/compile/backend/fsm_comp.cmx
+src/target/make_top.cmo : \
+    src/prelude.cmo \
+    src/target/fsm_typing.cmo
+src/target/make_top.cmx : \
+    src/prelude.cmx \
+    src/target/fsm_typing.cmx
 src/target/naming_convention.cmo :
 src/target/naming_convention.cmx :
 src/typing/types.cmo :

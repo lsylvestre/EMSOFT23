@@ -138,7 +138,7 @@ architecture rtl of %s is
                   rdy => ready,
                   argument => argument,
                   result => result
-                  );@,";
+                  );@," clock;
     
     let rec loop pos = function 
     | [] -> ()
