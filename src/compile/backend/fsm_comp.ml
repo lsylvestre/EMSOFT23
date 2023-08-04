@@ -168,10 +168,12 @@ let rec to_s ~statics ~tail x ~rdy ~k e =
 
   | E_static_array_get(y,idx) ->
       let a = to_a idx in
-      let q = Ast.gensym ~prefix:"pause" () in
-      let t = q, return_atom @@ A_buffer_get(y) in
-      let s = seq_ (S_setptr(y,a)) (S_continue q) in
-      S_let_transitions([t],s) (* true ? don't care *)
+      let q1 = Ast.gensym ~prefix:"pause" () in
+      let q2 = Ast.gensym ~prefix:"pause" () in
+      let t1 = q1, S_continue q2 in
+      let t2 = q2, return_atom @@ A_buffer_get(y) in
+      let s = seq_ (S_setptr(y,a)) (S_continue q1) in
+      S_let_transitions([t1;t2],s) (* true ? don't care *)
 
 
   | E_static_array_set(y,idx,e_upd) -> 

@@ -101,7 +101,7 @@ let gen_op fmt (op:op) pp a : unit =
   let funcall fmt s = fprintf fmt "%s(%a)" s pp a in
   let procall fmt s = fprintf fmt "%s(%a)" s pp a in
   let skip_when b fmt f a =
-    if b then fprintf fmt "mixc_skip(misc_unit)" 
+    if b then fprintf fmt "mixc_skip(mixc_unit)" 
     else f fmt a in
   match op with
   | Add -> funcall fmt "mixc_add"

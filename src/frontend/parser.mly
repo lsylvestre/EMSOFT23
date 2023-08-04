@@ -354,8 +354,10 @@ const:
 | b=BOOL_LIT { Bool b }
 | n=INT_LIT  {
     Int (n,unknown()) }
+| LPAREN n=INT_LIT COL ty=ty RPAREN {
+    Int (n,ty) } /*
 | LPAREN o=MINUS? n=INT_LIT COL ty=ty RPAREN {
-    Int ((if o = None then n else - n),ty) }
+    Int ((if o = None then n else - n),ty) }*/
 | s=STRING_LIT  { String s }
 | NOT { Op(Runtime(Not)) }
 | LPAREN op=binop RPAREN { Op(Runtime(op)) }

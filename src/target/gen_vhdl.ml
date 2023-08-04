@@ -333,7 +333,7 @@ architecture rtl of %a is@,@[<v 2>@," pp_ident name;
       fprintf fmt "type array_value_%d is array (natural range <>) of value(0 to %d);@," n (n-1)) arty;
 
   List.iter (fun (x,Static_array(c,n)) ->
-          fprintf fmt "signal %a : array_value_%d(0 to %d);@," pp_ident x (size_const c) (n-1);
+          fprintf fmt "signal %a : array_value_%d(0 to %d) := (others => %a); @," pp_ident x (size_const c) (n-1) pp_c c;
           fprintf fmt "signal %a : value(0 to %d);@," pp_ident ("$"^x^"_value") (size_const c - 1);
           fprintf fmt "signal %a : natural range 0 to %d;@," pp_ident ("$"^x^"_ptr") (n - 1);
           fprintf fmt "signal %a : natural range 0 to %d;@," pp_ident ("$"^x^"_ptr_write") (n - 1);
@@ -342,6 +342,30 @@ architecture rtl of %a is@,@[<v 2>@," pp_ident name;
         ) statics;
 
   fprintf fmt "@,@[<v 2>begin@,";
+
+
+  List.iter (fun (x,Static_array(c,n)) ->
+
+    fprintf fmt "process (clk)
+            begin
+            if (rising_edge(clk)) then
+                 if %a = '1' then
+                    %a(%a) <= %a;
+                 else
+                   %a <= %a(%a);
+                 end if;
+            end if;
+        end process;@,@," 
+          pp_ident ("$"^x^"_write_request")
+          pp_ident x
+          pp_ident ("$"^x^"_ptr_write")
+          pp_ident ("$"^x^"_write")
+          pp_ident ("$"^x^"_value")
+          pp_ident x
+          pp_ident ("$"^x^"_ptr");
+
+    ) statics;
+
 
   fprintf fmt "@[<v 2>process(clk)@,";
 
@@ -375,7 +399,7 @@ architecture rtl of %a is@,@[<v 2>@," pp_ident name;
    Hashtbl.iter (fun x t ->
       match List.assoc_opt x statics with
       | Some (Static_array(c,n)) ->
-          fprintf fmt "@]@,%a <= (others => %a);@,@[<hov>" pp_ident x pp_c c
+          () (* fprintf fmt "@]@,%a <= (others => %a);@,@[<hov>" pp_ident x pp_c c *)
       | None ->
           if x <> argument then
             fprintf fmt "default_zero(%a);@ @," pp_ident x
@@ -390,16 +414,6 @@ architecture rtl of %a is@,@[<v 2>@," pp_ident name;
 
 
   fprintf fmt "@]@,@[<v 2>else if run = '1' then@,";
-
-
-  List.iter (fun (x,Static_array(c,n)) ->
-           fprintf fmt "@,@[<v 2>if %a = '1' then@," pp_ident ("$"^x^"_write_request");
-           fprintf fmt "%a(%a) <= %a;@]@," pp_ident x pp_ident ("$"^x^"_ptr_write") pp_ident ("$"^x^"_write");
-           fprintf fmt "@,@[<v 2>else";
-             fprintf fmt "@,%a <= %a(%a);@,@]" pp_ident ("$"^x^"_value") pp_ident x pp_ident ("$"^x^"_ptr");
-           fprintf fmt "@]end if;@,";
-    ) statics;
-
 
   pp_fsm ~restart:false fmt ~state_var ~compute ~rdy ("main",ts,s);
   

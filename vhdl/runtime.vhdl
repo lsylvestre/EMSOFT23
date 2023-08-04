@@ -9,6 +9,7 @@ package runtime is
     constant mixc_false : value(0 to 0)  := "0";
     constant mixc_unit : value(0 to 0)  := "1";
     procedure mixc_skip (arg : in value);
+    function mixc_abs  (arg: value)  return value;
     function mixc_add  (arg: value)  return value;
     function mixc_sub  (arg: value)  return value;
     function mixc_neg  (arg: value)  return value;
@@ -85,6 +86,13 @@ package body runtime is
         end loop;
     return b;
     end function;
+
+  function mixc_abs (arg: value) return value is
+    variable r : signed (0 to arg'length-1);
+    begin
+      r := abs(signed(arg)); 
+      return value(r);
+    end;
 
   function mixc_add (arg: value) return value is
     constant length: natural := arg'length / 2;
@@ -315,12 +323,12 @@ package body runtime is
     variable sign : std_logic;
     begin
       r := unsigned(arg(0 to length-1)) srl n;
-      sign := arg(0);
-      for i in 0 to arg'length - 1 loop -- not yet tested
-        if i > n then
-          r(i) := sign;
-        end if;
-      end loop;
+      --sign := arg(0);
+      --for i in 0 to arg'length - 1 loop -- not yet tested
+      --  if i > n then
+      --    r(i) := sign;
+      --  end if;
+      --end loop;
       return value(r);
     end;
 

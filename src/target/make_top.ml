@@ -74,14 +74,14 @@ let pp_top ?(top="top") ~argument:(_,ta) ~result:(_,tr) ?(clock="clk") fmt (inpu
      | Some t -> argument_size <> Fsm_typing.size_ty t
   then 
     Prelude.Errors.error (fun fmt ->
-        fprintf fmt "bad format for top module I/Os -- expect an input of size %d" argument_size);
+        fprintf fmt "bad format for top module I/Os -- expect an argument of size %d" argument_size);
 
   if match tr with
      | None -> false
      | Some t -> result_size <> Fsm_typing.size_ty t 
   then 
     Prelude.Errors.error (fun fmt ->
-        fprintf fmt "bad format for top module I/Os -- expect an output of size %d" result_size);
+        fprintf fmt "bad format for top module I/Os -- expect a result of size %d" result_size);
 
   let open Format in
   fprintf fmt "@[<v>library IEEE;

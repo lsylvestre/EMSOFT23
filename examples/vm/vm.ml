@@ -38,11 +38,11 @@ let interp () =
       (next_pc, ram[sp_minus_1 - n], sp) in
 
     let push() =
-      let sp = ppush_stack(acc,sp) in
+      let sp = push_stack(acc,sp) in
       (pc_plus_1, acc, sp) in
 
     let push_acc_n (next_pc,n) =
-      let sp_minus_1 = ppush_stack(acc,sp) in
+      let sp_minus_1 = push_stack(acc,sp) in
       (next_pc,ram[sp - n],sp_minus_1) in
 
     let env_acc_n (next_pc,n) =
@@ -56,15 +56,13 @@ let interp () =
       (next_pc, v, sp) in
 
     let pushoffsetclosure_n (next_pc,n) =
-      let sp = ppush_stack(acc,sp) in
-      (* print_string "============================== BAM ============= "; print_int (env[0]); print_newline ();*)
+      let sp = push_stack(acc,sp) in
       let v =  val_ptr (ptr_val (env[0]) + n) in
       (next_pc,v,sp) in
 
     let get_field_n (next_pc,n) =
       assert (is_ptr (acc) == 1);
       let v = ram[ptr_val(acc)+n] in
-      (* print_string "//////////get_field_n: " ; print_int v;*)(* (ptr_val(acc)+n); *)
       (next_pc,v,sp) in
 
     let set_field_n (next_pc,n) =
@@ -76,7 +74,7 @@ let interp () =
       (next_pc,val_long n,sp) in
 
     let pushconst_n (next_pc,n) =
-      let sp = ppush_stack(acc,sp) in
+      let sp = push_stack(acc,sp) in
       (next_pc,val_long n,sp) in
 
     let binop (op) =
@@ -137,9 +135,9 @@ let interp () =
           | 29 (* PUSHENVACC4 *) -> push_env_acc_n(pc_plus_1, 4)
           | 30 (* PUSHENVACC *) -> on_argument (fun n -> push_env_acc_n(pc_plus_2, n))
           | 31 (* PUSH-RETADDR *) -> on_argument (fun ofs ->
-                                       let sp = ppush_stack(val_long (extra_args[0]),sp) in
-                                       let sp = ppush_stack(val_long (env[0]),sp) in
-                                       let sp = ppush_stack(val_long (pc_plus_1+ofs),sp) in
+                                       let sp = push_stack(val_long (extra_args[0]),sp) in
+                                       let sp = push_stack(val_long (env[0]),sp) in
+                                       let sp = push_stack(val_long (pc_plus_1+ofs),sp) in
                                        (pc_plus_2,acc,sp))
           | 32 (* APPLY *) -> on_argument (fun args ->
                                 extra_args[0] <- args - 1;
@@ -148,21 +146,21 @@ let interp () =
                                 (next_pc,acc,sp))
           | 33 (* APPLY1 *) -> assert (is_ptr acc == 1);
                                let (arg,sp) = pop_stack(sp) in
-                               let sp = ppush_stack(val_long (extra_args[0]),sp) in
-                               let sp = ppush_stack(env[0],sp) in
-                               let sp = ppush_stack(val_long pc_plus_1,sp) in
-                               let sp = ppush_stack(arg,sp) in
+                               let sp = push_stack(val_long (extra_args[0]),sp) in
+                               let sp = push_stack(env[0],sp) in
+                               let sp = push_stack(val_long pc_plus_1,sp) in
+                               let sp = push_stack(arg,sp) in
                                let next_pc = long_val (get_field(acc,0)) in
                                env[0] <- acc;
                                extra_args[0] <- 0;
                                (next_pc,acc,sp)
           | 34 (* APPLY2 *) -> let (arg1,sp) = pop_stack(sp) in
                                let (arg2,sp) = pop_stack(sp) in
-                               let sp = ppush_stack(val_long (extra_args[0]),sp) in
-                               let sp = ppush_stack (env[0],sp) in
-                               let sp = ppush_stack(val_long pc_plus_1,sp) in
-                               let sp = ppush_stack(arg2,sp) in
-                               let sp = ppush_stack(arg1,sp) in
+                               let sp = push_stack(val_long (extra_args[0]),sp) in
+                               let sp = push_stack (env[0],sp) in
+                               let sp = push_stack(val_long pc_plus_1,sp) in
+                               let sp = push_stack(arg2,sp) in
+                               let sp = push_stack(arg1,sp) in
                                let next_pc = long_val (get_field(acc,0)) in
                                env[0] <- acc;
                                extra_args[0] <- 1;
@@ -171,18 +169,18 @@ let interp () =
           | 35 (* APPLY3 *) -> let (arg1,sp) = pop_stack(sp) in
                                let (arg2,sp) = pop_stack(sp) in
                                let (arg3,sp) = pop_stack(sp) in
-                               let sp = ppush_stack(val_long (extra_args[0]),sp) in
-                               let sp = ppush_stack (env[0],sp_minus_2) in
-                               let sp = ppush_stack(val_long pc_plus_1,sp_minus_1) in
-                               let sp = ppush_stack(arg3,sp) in
-                               let sp = ppush_stack(arg2,sp_plus_1) in
-                               let sp = ppush_stack(arg1,sp_plus_2) in
+                               let sp = push_stack(val_long (extra_args[0]),sp) in
+                               let sp = push_stack (env[0],sp_minus_2) in
+                               let sp = push_stack(val_long pc_plus_1,sp_minus_1) in
+                               let sp = push_stack(arg3,sp) in
+                               let sp = push_stack(arg2,sp_plus_1) in
+                               let sp = push_stack(arg1,sp_plus_2) in
                                let next_pc = long_val (get_field(acc,0)) in
                                env[0] <- acc;
                                extra_args[0] <- 2;
                                (next_pc,acc,sp)          
 
-          | 36 (* APPTERM *) -> on_arguments2 (fun (n,s) -> (* not yet checked *)
+           | 36 (* APPTERM *) -> on_arguments2 (fun (n,s) -> (* not yet checked *)
                                   let rec w i =
                                     if i > n then () else
                                     ram[sp-n-s-i] <- ram[sp-i]; w(i+1)
@@ -195,7 +193,7 @@ let interp () =
           | 37 (* APPTERM1 *) -> on_argument (fun n ->
                                     let (arg,sp) = pop_stack(sp) in
                                     let sp = sp - n + 1 in
-                                    let sp = ppush_stack(arg,sp) in
+                                    let sp = push_stack(arg,sp) in
                                     env[0] <- acc;
                                     let next_pc = long_val (get_field(acc,0)) in
                                     (next_pc,acc,sp))
@@ -203,8 +201,8 @@ let interp () =
                                     let (arg1,sp) = pop_stack(sp) in
                                     let (arg2,sp) = pop_stack(sp) in
                                     let sp = sp - n + 2 in
-                                    let sp = ppush_stack(arg2,sp) in
-                                    let sp = ppush_stack(arg1,sp) in
+                                    let sp = push_stack(arg2,sp) in
+                                    let sp = push_stack(arg1,sp) in
                                     env[0] <- acc;
                                     let next_pc = long_val (get_field(acc,0)) in
                                     extra_args[0] <- extra_args[0] + 1;
@@ -214,9 +212,9 @@ let interp () =
                                     let (arg2,sp) = pop_stack(sp) in
                                     let (arg3,sp) = pop_stack(sp) in
                                     let sp = sp - n + 3 in
-                                    let sp = ppush_stack(arg3,sp) in
-                                    let sp = ppush_stack(arg2,sp) in
-                                    let sp = ppush_stack(arg1,sp) in
+                                    let sp = push_stack(arg3,sp) in
+                                    let sp = push_stack(arg2,sp) in
+                                    let sp = push_stack(arg1,sp) in
                                     env[0] <- acc;
                                     let next_pc = long_val (get_field(acc,0)) in
                                     extra_args[0] <- extra_args[0] + 2;
@@ -241,7 +239,7 @@ let interp () =
                                 let nbargs = size_val(v) - 2 in
                                 let rec loop_push(sp,i) =
                                   if i >= nbargs then sp else 
-                                  let sp = ppush_stack(get_field(v,i+2),sp) in
+                                  let sp = push_stack(get_field(v,i+2),sp) in
                                   loop_push(sp,i+1)
                                 in
                                 let sp = loop_push(sp,0) in
@@ -271,7 +269,7 @@ let interp () =
                                  extra_args[0] <- long_val(u);
                                  (next_pc,next_acc,sp)))
           | 43 (* CLOSURE *) -> on_arguments2 (fun (n,ofs) ->
-                                  let sp = if n > 0 then ppush_stack(acc,sp) else sp in
+                                  let sp = if n > 0 then push_stack(acc,sp) else sp in
                                   let next_acc = make_closure(pc_plus_2+ofs,n+1) in
                                   let rec fill(i,sp) =
                                     if i >= n then sp else
@@ -282,7 +280,7 @@ let interp () =
                                   (pc_plus_3, next_acc, sp))
 
           | 44 (* CLOSUREREC *) -> on_arguments3 (fun (f,v,o) ->
-                                       let sp = if v > 0 then ppush_stack(acc,sp) else sp in
+                                       let sp = if v > 0 then push_stack(acc,sp) else sp in
                                        let closure_size = (2 * f) - 1 + v in  
                                        let next_acc = make_block(closure_tag,closure_size) in
                                        set_field(next_acc, 0, val_long (pc_plus_3+o));
@@ -299,10 +297,10 @@ let interp () =
                                           w1(i+1))
                                        in 
                                        w1(1);
-                                       let sp = ppush_stack(next_acc,sp) in
+                                       let sp = push_stack(next_acc,sp) in
                                        let rec w3(i,sp) =
                                          if i >= f then sp else
-                                         let sp = ppush_stack(val_ptr (ptr_val next_acc + (2 * i)),sp) in
+                                         let sp = push_stack(val_ptr (ptr_val next_acc + (2 * i)),sp) in
                                          w3(i+1,sp)
                                        in
                                        let sp = w3(1,sp) in
@@ -329,7 +327,7 @@ let interp () =
                                          let v = get_field(global_get n,p) in
                                          (pc_plus_2+1,v,sp))
           | 56 (* PUSHGETGLOBALFIELD *) -> on_arguments2 (fun (n,p) ->
-                                            let sp = ppush_stack(acc,sp) in
+                                            let sp = push_stack(acc,sp) in
                                             let v = get_field(global_get n,p) in
                                             (pc_plus_2+1,v,sp_plus_1))
           | 57 (* SETGLOBAL *) -> on_argument (fun n ->
@@ -342,7 +340,7 @@ let interp () =
           | 60 (* PUSHATOM0 *) -> push_stack_implace(sp,acc);
                                   (pc_plus_1, make_block(0,0), sp_plus_1)
           | 61 (* PUSHATOM *) -> on_argument (fun tag -> 
-                                    let sp = ppush_stack(acc,sp) in
+                                    let sp = push_stack(acc,sp) in
                                     let a = make_block(tag,0) in
                                     (pc_plus_2,a,sp_plus_1))
           | 62 (* MAKEBLOCK *) -> let sz = code[pc_plus_1] in
@@ -428,10 +426,10 @@ let interp () =
                                  (pc_plus_2 + code[pc_plus_2+ofs], acc, sp))
           | 88 (* BOOLNOT *) -> (pc_plus_1,val_long (bnot (long_val (acc))), sp)
           | 89 (* PUSHTRAP *) -> on_argument (fun ofs -> 
-                                   let sp = ppush_stack(val_long(extra_args[0]),sp) in
-                                   let sp = ppush_stack(env[0],sp) in
-                                   let sp = ppush_stack(trap_sp[0],sp) in
-                                   let sp = ppush_stack(val_long(pc_plus_1+ofs),sp) in
+                                   let sp = push_stack(val_long(extra_args[0]),sp) in
+                                   let sp = push_stack(env[0],sp) in
+                                   let sp = push_stack(trap_sp[0],sp) in
+                                   let sp = push_stack(val_long(pc_plus_1+ofs),sp) in
                                    trap_sp[0] <- sp;
                                    (pc_plus_2, acc, sp))
           | 90 (* POPTRAP *) ->
@@ -453,7 +451,7 @@ let interp () =
                               (long_val(next_pc),acc,sp)
           (* 92 CHECK-SIGNALS *)
           | 93 (* C-CALL1 *) -> on_argument (fun p -> 
-                                  let sp = ppush_stack(env[0],sp) in
+                                  let sp = push_stack(env[0],sp) in
                                   let acc = call (p,acc) in
                                   let (v,sp) = pop_stack(sp) in
                                   env[0] <- v;
@@ -518,7 +516,8 @@ let interp () =
           end)
   in loop (0,0,stack_start) ;;
 
-
 let main () = 
   init_data () ;
-  load_code () ; interp () ;;
+  load_code () ; 
+  let pc = interp () in
+  pc == 0 ;;

@@ -104,7 +104,11 @@ let main () : unit =
     exit 0;
   end;
 
-  let pi = if Operators.(!flag_no_assert || !flag_no_print) then Clean_simul.clean_pi pi else pi in
+  let pi = if Operators.(!Operators.flag_no_assert || !Operators.flag_no_print) 
+           then Clean_simul.clean_pi
+                  ~no_assert:!Operators.flag_no_assert
+                  ~no_print:!Operators.flag_no_print pi 
+           else pi in
 
   (** remove all decorations (locations) in the source program *)
   let (pi, arg_list) =

@@ -8,9 +8,7 @@ use work.runtime.all;
 entity top is
   port (signal clk48 : in  std_logic;
         signal usr_btn : in std_logic;
-        signal rgb_led0_r : out std_logic;
-        signal rgb_led0_g : out std_logic;
-        signal rgb_led0_b : out std_logic
+        signal rgb_led0_r : out std_logic
   );
 end entity;
 
@@ -22,12 +20,12 @@ architecture rtl of top is
               signal reset : in std_logic;
               signal rdy : out value(0 to 0);
               signal argument : in value(0 to 0);
-              signal result : out value(0 to 2)
+              signal result : out value(0 to 0)
         );
     end component;
     signal RST : std_logic := '1';
     signal argument : value(0 to 0);
-    signal result : value(0 to 2);
+    signal result : value(0 to 0);
     signal ready : value (0 to 0);  
     begin
         process (clk48)
@@ -48,8 +46,6 @@ main_CC : component main
                   result => result
                   );
 rgb_led0_r <= result(0);
-rgb_led0_g <= result(1);
-rgb_led0_b <= result(2);
 
 end architecture;
 

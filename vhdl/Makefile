@@ -25,3 +25,4 @@ clean:
 
 clean-all:	clean
 	rm -f main.vhdl tb_main.vhdl
+	# make -f synth/targets/orangecrab/Makefile clean

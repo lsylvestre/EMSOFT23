@@ -4,6 +4,8 @@ open Ast
   Resulting expression is not well-typed: all local declarations (let) are
   seen as global, and all toplevel declaration are mutual recursive. *)
 
+let id_size = Types.T_size 12 ;;
+
 module IMap = Map.Make(Int)
 
 let (+++) s1 s2 =  IMap.union (fun _ _ v2 -> Some v2) s1 s2
@@ -28,7 +30,7 @@ let insert_kont w (x,e) =
         E_match(E_var (Naming_convention.instance_id_of_fun x),
                (List.map (fun (n,k) ->
                            (* Enum (Naming_convention.instance_enum_const n)*)
-                          Int(n,Types.unknown()),k e
+                          Int(n,id_size),k e
                   ) l),E_app(E_const(Op(Runtime(Assert))),E_const(Bool false)))
 
   | E_fix(f,(p,e1)) ->
@@ -82,7 +84,7 @@ let rec share tail_env (k: e -> e) (e:e) : (_ * e) =
       then SMap.empty,E_app(E_var f,E_tuple[xc;E_var (Naming_convention.instance_id_of_fun f)]) else
       let id = new_instance () in
       let w = SMap.singleton f (IMap.singleton id k) in
-      w,E_app(ef,E_tuple[xc;E_const(Int(id,Types.unknown()))])
+      w,E_app(ef,E_tuple[xc;E_const(Int(id,id_size))])
   | E_app _ -> 
       Ast_pprint.pp_exp Format.std_formatter e;
       assert false (* already expanded *)
