@@ -161,7 +161,8 @@ let rec to_s ~statics ~tail x ~rdy ~k e =
   | E_step(e1,k) ->
       let pi = Middle_end.compile Ast.{statics;ds=[];main=e1} in
       let rdy,res,compute,(ts,s) = compile pi in
-      S_fsm((Ast.gensym ~prefix:"id" ()),rdy,res,compute,ts,s,true)
+      return_ @@
+      S_fsm((Ast.gensym ~prefix:"id" ()),rdy,res,compute,ts,s,false)
  
   | E_static_array_length(y) ->
       return_atom @@ A_buffer_length(y,new_tvar())
