@@ -42,6 +42,7 @@
        "lsr", LSR;
        "asr", ASR;
        "resize_int", RESIZE_INT;
+       "type", TYPE;
      ]
 
 
@@ -67,6 +68,7 @@ rule token = parse
 | "|]"                { PIPE_RBRACKET }
 | ','                 { COMMA }
 | ':'                 { COL }
+| '''                 { QUOTE }
 | "<-"                { LEFT_ARROW }
 | "->"                { RIGHT_ARROW }
 | "=>"                { IMPLY }

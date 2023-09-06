@@ -5,6 +5,7 @@ type token =
   | XOR
   | WITH
   | VAR
+  | TYPE
   | TVAR_IDENT of (string)
   | TIMES
   | THEN
@@ -19,6 +20,7 @@ type token =
   | REGISTER
   | REC
   | RBRACKET
+  | QUOTE
   | PLUS
   | PIPE_RBRACKET
   | PIPE_PIPE

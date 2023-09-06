@@ -9,6 +9,9 @@
   (* location augmented we a file name *)
   let with_file loc =
     (!Current_filename.current_file_name, loc)
+
+
+  let alias_types = Hashtbl.create 10
 %}
 
 %token LPAREN RPAREN LBRACKET RBRACKET COMMA PIPE_PIPE EQ EQ_EQ COL SEMI HAT STATIC DOT_LENGTH
@@ -27,6 +30,7 @@
 %token LEFT_ARROW RIGHT_ARROW
 %token EXIT_REPL
 %token <string> STRING_LIT
+%token QUOTE TYPE
 
 /* The precedences must be listed from low to high. */
 
@@ -56,6 +60,7 @@
 pi:
 | g=static pi=pi { let gs,ds= pi in (g::gs,ds) }
 | d=decl pi=pi { let gs,ds= pi in (gs,d::ds) }
+| type_alias pi=pi { pi }
 | EOF { [],[] }
 
 static:
@@ -77,6 +82,9 @@ decl:
 | e=exp SEMI_SEMI { ((P_var "_", e),(with_file $loc))  }
 /*
 | EOF { E_var (!Ast_mk.main_symbol) }*/
+
+type_alias: /* todo: avoid side effect, which depends on the left-to-right evaluation order */
+| TYPE x=IDENT EQ ty=ty SEMI_SEMI { Hashtbl.add alias_types x ty }
 
 
 fun_decl(In_kw):
@@ -142,11 +150,14 @@ oty:
 | tys=separated_nonempty_list(TIMES,aty) { group_ts tys }
 
 aty:
-| x=IDENT { T_const (match x with
-                     | "unit" -> TUnit
-                     | "bool" -> TBool
-                     | "int" -> TInt (T_size 32)
-                     | s -> Prelude.Errors.raise_error ~loc:(with_file $loc) ~msg:("unbound type constructor "^s) ()) }
+| x=IDENT { match x with
+            | "unit" -> T_const TUnit
+            | "bool" -> T_const TBool
+            | "int" -> T_const (TInt (T_size 32))
+            | s -> (match Hashtbl.find_opt alias_types s with
+                    | Some t -> t
+                    | None -> Prelude.Errors.raise_error ~loc:(with_file $loc)
+                              ~msg:("unbound type constructor "^s) ()) }
 | x=IDENT LT tz=ty GT { match x with
                         | "string" -> T_string tz
                         | "int" -> T_const (TInt tz)
@@ -358,6 +369,14 @@ const:
     Int (n,ty) } /*
 | LPAREN o=MINUS? n=INT_LIT COL ty=ty RPAREN {
     Int ((if o = None then n else - n),ty) }*/
+| n=INT_LIT QUOTE k=INT_LIT 
+    { if Float.log2 (float n) >= float (k-1) then 
+       Prelude.Errors.raise_error ~loc:(with_file $loc) 
+          ~msg:("Integer literal "^
+                string_of_int n^
+                " exceeds the range of representable integers of type int<"^
+                string_of_int k ^">") ()
+      else Int (n,T_size k) }
 | s=STRING_LIT  { String s }
 | NOT { Op(Runtime(Not)) }
 | LPAREN op=binop RPAREN { Op(Runtime(op)) }
