@@ -1,8 +1,9 @@
 open Fsm_syntax
 open Format
 
-let size_ty t = 
-  Fsm_typing.size_ty t
+let size_ty t =
+  (* we must canonising [t] to prevent it from being considered as a type variable *)
+  Fsm_typing.(size_ty (canon t))
 
 (** [size_const c] returns the number of bits of constant [c] *)
 let rec size_const c =
@@ -434,4 +435,3 @@ architecture rtl of %a is@,@[<v 2>@," pp_ident name;
 end architecture;@]\n";
 
   ( (argument,t_argument), (result,t_result) )
-
