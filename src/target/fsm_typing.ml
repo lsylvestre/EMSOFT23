@@ -82,24 +82,30 @@ let add_typing_env h (x:string) (t:ty) =
    | None -> Hashtbl.add h x (canon t)
    | Some t' -> unify t t'; Hashtbl.replace h x (canon t'))
 
-let rec translate_ty t =
-  match Types.canon t with
-| Types.T_const(TInt tz) -> TInt (translate_ty tz)
-| Types.T_const(TBool) -> TBool
-| Types.T_const(TUnit) -> TUnit
-| Types.T_tuple(ts) -> TTuple (List.map translate_ty ts)
-| Types.T_var _ -> new_tvar () (* todo: equivalence occurences, i.e., if 'a = 'b, then T['a] = T['b]  *)
-| Types.T_string tz ->
-    (match Types.canon tz with
-    | T_size n -> TString (TSize (n*8))
-    | T_var _ -> new_tvar()
-    | _ -> assert false) (* TODO *)
-| Types.T_size n -> TSize n
-| Types.T_array n -> TInt (TSize 32)
-| Types.T_static{elem=te;size=tz} -> TStatic{elem=translate_ty te;size=translate_ty tz}
-| Types.(T_infinity|T_fun _|T_add (_, _)|T_max (_, _)|T_le (_, _)) ->
-   assert false (* already expanded *)
-
+let rec translate_ty =
+  let hvar = Hashtbl.create 10 in 
+  function
+  | Types.T_const(TInt tz) -> TInt (translate_ty tz)
+  | Types.T_const(TBool) -> TBool
+  | Types.T_const(TUnit) -> TUnit
+  | Types.T_tuple(ts) -> TTuple (List.map translate_ty ts)
+  | Types.T_var r -> 
+      if Hashtbl.mem hvar r then Hashtbl.find hvar r else
+      (let t = TVar(ref @@ match !r with
+                   | Unknown n -> V (string_of_int n)
+                   | Ty t -> T (translate_ty t)) in
+      Hashtbl.add hvar r t;
+      t)
+  | Types.T_string tz ->
+      (match Types.canon tz with
+      | T_size n -> TString (TSize (n*8))
+      | T_var _ -> new_tvar()
+      | _ -> assert false) (* TODO *)
+  | Types.T_size n -> TSize n
+  | Types.T_array n -> TInt (TSize 32)
+  | Types.T_static{elem=te;size=tz} -> TStatic{elem=translate_ty te;size=translate_ty tz}
+  | Types.(T_infinity|T_fun _|T_add (_, _)|T_max (_, _)|T_le (_, _)) ->
+     assert false (* already expanded *)
 
 
 let rec typing_c = function
