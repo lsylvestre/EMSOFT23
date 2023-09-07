@@ -9,6 +9,7 @@ let rec occur v ty =
   | T_var {contents=Unknown v'} ->
       if v = v' then raise Found
   | T_var {contents=Ty ty} -> f ty
+  | T_const(TInt tz) -> f tz
   | T_const _ -> ()
   | T_tuple ts ->
       List.iter f ts
@@ -30,6 +31,7 @@ let rec occur v ty =
 
   let vars_of_type t =
     let rec vars s = function
+    | T_const(TInt tz) -> vars s tz
     | T_const _ -> s
     | T_tuple ts ->
        List.fold_left vars s ts
@@ -64,6 +66,8 @@ let rec occur v ty =
           (try Hashtbl.find unknowns n with Not_found -> t)
      | T_var {contents=(Ty t)} ->
          instance t
+     | (T_const(TInt tz)) ->
+         T_const(TInt (instance tz))
      | (T_const _) as t ->
          t
      | T_array t ->
@@ -118,9 +122,9 @@ let rec unify ~loc t1 t2 =
   let unify_tconst tc1 tc2 =
     match tc1,tc2 with
     | TInt tz, TInt tz' ->
-        if not (Fix_int_lit_size.is_set ()) then () else begin
+        (* if not (Fix_int_lit_size.is_set ()) then () else begin
           unify ~loc tz (T_size (Fix_int_lit_size.get_size_type ()))
-         end;
+         end; *)
         unify ~loc tz tz'
     | TBool,TBool | TUnit,TUnit -> ()
     | _ -> raise @@ CannotUnify(t1,t2,loc)

@@ -64,7 +64,7 @@ pi:
 | EOF { [],[] }
 
 static:
-| LET STATIC x=IDENT EQ ce=aexp HAT n=INT_LIT SEMI_SEMI { 
+| LET STATIC x=IDENT EQ w=const_init_static HAT n=INT_LIT SEMI_SEMI { 
     let rec as_const e =
       match un_annot e with
       | E_const c -> c
@@ -72,8 +72,14 @@ static:
       | _ ->  Prelude.Errors.raise_error ~loc:(with_file $loc)
                   ~msg:"this expression should be a constant" ()
       in
+      let (ce,tyopt) = w in 
       let c = as_const ce in
+      (* todo: add loc and type annotation [tyopt] *)
       (x,Static_array(c,n)) }
+
+const_init_static:
+| ce=aexp { (ce,None) }
+| LPAREN ce=exp COL ty=ty RPAREN { (ce,Some ty) }
 
 exp_eof:
 | e=exp EOF {e}
@@ -173,7 +179,7 @@ aty:
                         | s -> Prelude.Errors.raise_error ~loc:(with_file $loc) ~msg:("unbound type constructor "^s) () }
 | at=aty STATIC LT tz=ty GT { T_static{elem=at;size=tz} }
 | n=INT_LIT           { T_size n }
-| x=TVAR_IDENT { unknown () } /* TODO: hashmap to constraints occurences */
+| x=TVAR_IDENT { unknown () } /* TODO: hashmap to constrain occurrences */
 | LPAREN ty=ty RPAREN { ty }
 
 value:
@@ -374,10 +380,6 @@ const:
 | b=BOOL_LIT { Bool b }
 | n=INT_LIT  {
     Int (n,unknown()) }
-| LPAREN n=INT_LIT COL ty=ty RPAREN {
-    Int (n,ty) } /*
-| LPAREN o=MINUS? n=INT_LIT COL ty=ty RPAREN {
-    Int ((if o = None then n else - n),ty) }*/
 | n=INT_LIT QUOTE k=INT_LIT 
     { if Float.log2 (float n) >= float (k-1) then 
        Prelude.Errors.raise_error ~loc:(with_file $loc) 

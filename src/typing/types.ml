@@ -91,6 +91,7 @@ let simplify_size_constraints t =
   themselves put in canonical form. *)
 let rec canon t =
   match t with
+  | T_const(TInt t) -> T_const(TInt (canon t))
   | T_const _ -> t
   | T_var({contents=Ty t'} as v) ->
       let t2 = canon t' in

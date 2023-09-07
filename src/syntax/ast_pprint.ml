@@ -160,7 +160,9 @@ let pp_tuple (fmt:fmt) pp vs =
 let rec pp_const (fmt:fmt) (c:c) : unit =
   match c with
   | Int (n,tz) ->
-      if !hexa_int_pp_flag then fprintf fmt "0x%x" n else fprintf fmt "%d" n
+      fprintf fmt "("; 
+      if !hexa_int_pp_flag then fprintf fmt "0x%x" n else fprintf fmt "%d" n;
+      fprintf fmt " : int<%a>)" pp_ty tz 
   | Bool b -> fprintf fmt "%b" b
   | Unit -> fprintf fmt "()"
   | String s -> fprintf fmt "\"%s\"" s
