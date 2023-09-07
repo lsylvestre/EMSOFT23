@@ -18,11 +18,12 @@ let new_instance =
   let c  =ref 0 in
   (fun () -> incr c; !c)
 
-let to_c = function
+let rec to_c = function
 | Ast.Unit -> Unit
 | Ast.Int (n,tz) -> Int {value=n;tsize=Fsm_typing.translate_ty tz}
 | Ast.Bool b -> Bool b
 | Ast.String s -> String s
+| Ast.C_tuple cs -> CTuple (List.map to_c cs)
 | Ast.(Op _ | External _ | V_loc _) -> assert false
 
 let to_op = function

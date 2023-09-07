@@ -64,7 +64,16 @@ pi:
 | EOF { [],[] }
 
 static:
-| LET STATIC x=IDENT EQ c=const_with_neg_int HAT n=INT_LIT SEMI_SEMI { x,Static_array(c,n) }
+| LET STATIC x=IDENT EQ ce=aexp HAT n=INT_LIT SEMI_SEMI { 
+    let rec as_const e =
+      match un_annot e with
+      | E_const c -> c
+      | E_tuple es -> C_tuple(List.map as_const es)
+      | _ ->  Prelude.Errors.raise_error ~loc:(with_file $loc)
+                  ~msg:"this expression should be a constant" ()
+      in
+      let c = as_const ce in
+      (x,Static_array(c,n)) }
 
 exp_eof:
 | e=exp EOF {e}
@@ -344,7 +353,6 @@ aexp_desc:
     { (* Buffer n *) assert false (*todo*)  }
 
 
-
 pat:
 | p=apat { p }
 | p=apat COMMA ps=separated_nonempty_list(COMMA,apat)
@@ -356,9 +364,10 @@ apat:
 | x=IDENT { P_var x }
 
 
-const_with_neg_int:
+(* const_with_neg_int:
 | c=const | LPAREN c=const_with_neg_int RPAREN  { c }
-| MINUS n=INT_LIT { Int(- n,unknown()) }
+| MINUS n=INT_LIT { Int(- n,unknown()) } 
+*)
 
 const:
 | LPAREN RPAREN { Unit }

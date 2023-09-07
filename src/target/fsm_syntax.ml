@@ -15,6 +15,7 @@ type c = Unit
        | Int of {value:int;tsize:ty}
        | Bool of bool
        | Enum of x
+       | CTuple of c list
        | String of string (* non synthesizable *)
 
 type op = If (* i.e., a multiplexer *)
@@ -84,11 +85,15 @@ module Debug = struct
   | TSize n -> fprintf fmt "size<%d>" n
   | TStatic {elem ; size} -> fprintf fmt "%a buffer<%a>" pp_ty elem pp_ty size
 
-  let pp_c fmt = function
+let pp_tuple = Ast_pprint.pp_tuple 
+
+  let rec pp_c fmt = function
     | Unit -> fprintf fmt "()"
     | Int{value=n;tsize=t} -> fprintf fmt "%d'%ab" n pp_ty t
     | Bool b -> fprintf fmt "\"%d\"" (if b then 1 else 0)
     | Enum x -> fprintf fmt "%s" x
+    | CTuple(cs) ->
+      pp_tuple fmt pp_c cs
     | String s -> fprintf fmt "\"%s\"" s
 
   let pp_op fmt = function
@@ -106,9 +111,7 @@ module Debug = struct
   | A_letIn(x,a1,a2) ->
      fprintf fmt "@[<v>let %s = %a in@,%a@]" x pp_a a1 pp_a a2
   | A_tuple aas ->
-      fprintf fmt "@[<v>(";
-      pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ", ") pp_a fmt aas;
-      fprintf fmt ")@]"
+      pp_tuple fmt pp_a aas
   | A_string_get(sx,ix) -> fprintf fmt "%s[%s]" sx ix
   | A_buffer_get(x) -> fprintf fmt "static_get_value(%s)" x
   | A_buffer_length(x,_) -> fprintf fmt "%s.length" x

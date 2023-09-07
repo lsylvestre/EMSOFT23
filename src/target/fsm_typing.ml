@@ -102,7 +102,7 @@ let rec translate_ty t =
 
 
 
-let typing_c = function
+let rec typing_c = function
   |  Unit -> TUnit
   |  (Int{value=_;tsize=tz}) ->
        if not (Fix_int_lit_size.is_set ()) then () else begin
@@ -111,6 +111,7 @@ let typing_c = function
        TInt tz
   |  (Bool _) -> TBool
   |  (Enum _) -> (new_tvar ()) (* TODO! *)
+  |  (CTuple cs) -> TTuple(List.map typing_c cs)
   |  (String s) -> TString (TSize(String.length s))
 
 let rec typing_op h t op =

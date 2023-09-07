@@ -5,7 +5,7 @@ let size_ty t =
   Fsm_typing.size_ty t
 
 (** [size_const c] returns the number of bits of constant [c] *)
-let size_const c =
+let rec size_const c =
   match c with
   | Unit | Bool _ ->
       1
@@ -13,6 +13,8 @@ let size_const c =
       size_ty tsize
   | Enum _ -> 
       assert false (* cannot infer enum size *)
+  |CTuple cs -> 
+      List.fold_left (fun s c -> s + size_const c) 0 cs
   | String s -> String.length s * 8
 
 (* [reserved x] returns [true] iff [x] is a VHDL keyword 
@@ -55,8 +57,11 @@ let const_zero nbits =
     | n,0 -> make n
     | n,m -> make n^"& X"^make m
 
+let pp_tuple fmt pp vs =
+  pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " & ") pp fmt vs
+
 (** code generator for constants *)
-let pp_c fmt c =
+let rec pp_c fmt c =
   match c with
   | Unit -> fprintf fmt "mixc_unit"
   | Int {value=n;tsize} ->
@@ -76,6 +81,8 @@ let pp_c fmt c =
       (* notice: in VHDL, mixc_true(0) is valid, but "1"(0) is invalid. *)
       fprintf fmt "%s" (if b then "mixc_true" else "mixc_false")
   | Enum x -> pp_ident fmt x
+  | CTuple(cs) ->
+      pp_tuple fmt pp_c cs
   | String s -> fprintf fmt "of_string(\"%s\")" s
 
 (** code generator for tuples deconstruction *)
@@ -154,7 +161,7 @@ and pp_a fmt = function
    pp_call fmt (op,a)
 | A_letIn(x,a1,a2) ->
    fprintf fmt "@[%a := %a;@,%a@]" pp_ident x pp_a a1 pp_a a2
-| A_tuple aas -> pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " & ") pp_a fmt aas
+| A_tuple aas -> pp_tuple fmt pp_a aas
 | A_string_get(s,i) ->
     fprintf fmt "@[%a(to_integer(unsigned(%s&\"000\")) to to_integer(unsigned(%s&\"000\"))+7)@]" pp_ident s i i
 | A_buffer_get(xb) ->

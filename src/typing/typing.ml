@@ -170,17 +170,22 @@ let rec unify ~loc t1 t2 =
     | T_size n, T_add(T_size m,a)
     | T_add(T_size m,a), T_size n ->
         if n >= m then
-          unify ~loc (T_size (n-m)) a
+          unify ~loc (T_size (n - m)) a
         else raise (CannotUnify (t1,t2,loc))
     | T_infinity, T_size _ | T_size _,T_infinity -> raise (CannotUnify (t1,t2,loc))
     | _ -> ())
     | _ -> raise (CannotUnify (t1,t2,loc))
 
+exception PatTypeError
 
 let rec ty_bindings ~loc p t = match p,canon t with
-  | P_unit,T_const TUnit -> SMap.empty
+  | P_unit,T_const TUnit -> SMap.empty 
   | P_var x,t -> SMap.singleton x t
   | P_tuple ps,T_tuple ts ->
+      if List.compare_lengths ps ts <> 0 then 
+        let ts_expected = List.map (fun _ -> unknown ()) ps in
+        raise (CannotUnify (T_tuple ts_expected,t,loc)) 
+      else
       List.fold_left2 (fun m p t -> ty_bindings ~loc p t ++ m) SMap.empty ps ts
   | P_unit,t ->
       unify ~loc t (T_const TUnit);
@@ -232,7 +237,7 @@ let ty_extern ext =
   | Array_length ->
       fun_ty (T_array v) T_infinity (tint (T_size 32))
 
-let typ_const ~loc = function
+let rec typ_const ~loc = function
 | Int(_,tz) -> (* TODO, add a type constraint according to the size of the literal *)
     tint tz
 | Bool _ -> tbool
@@ -243,6 +248,7 @@ let typ_const ~loc = function
 | (V_loc _) ->
     (* not in source program: handled in the typer *)
     unknown()
+| C_tuple(cs) -> T_tuple(List.map (typ_const ~loc) cs)
 
 let rec non_expansive = function
   | E_deco(e,_) -> non_expansive e
@@ -334,9 +340,9 @@ let rec typ_exp ~toplevel ~loc (g:env) e =
       (* lookup *)
       (typ_ident g x loc, Response_time.zero)
   | E_if(e1,e2,e3) ->
-      let t1,n1 = typ_exp ~toplevel:false ~loc g e1 in
-      let t2,n2 = typ_exp ~toplevel:false ~loc g e2
-      and t3,n3 = typ_exp ~toplevel:false ~loc g e3 in
+      let t1,n1 = typ_exp ~toplevel:false ~loc:(loc_of e1) g e1 in
+      let t2,n2 = typ_exp ~toplevel:false ~loc:(loc_of e2) g e2
+      and t3,n3 = typ_exp ~toplevel:false ~loc:(loc_of e3) g e3 in
       unify ~loc t1 tbool;
       unify ~loc t2 t3;
       (** NB: [t2 <= t3] (according to the subtyping relation).
@@ -346,31 +352,33 @@ let rec typ_exp ~toplevel ~loc (g:env) e =
       check_conditional_shape ~loc e t;
       (t,Response_time.(add n1 (max n2 n3)))
   | E_match(e1,hs,e_els) ->
-      let t1,n1 = typ_exp ~toplevel:false ~loc g e1 in
+      let t1,n1 = typ_exp ~toplevel:false ~loc:(loc_of e1) g e1 in
       List.iter (fun (c,_) -> unify ~loc (typ_const ~loc c) t1) hs;
-      let t_els,n_els = typ_exp ~toplevel:false ~loc g e_els in
-      let ns = List.map (fun (_,ei) -> let t,n = typ_exp ~toplevel:false ~loc g ei in unify ~loc t_els t; n) hs in
+      let t_els,n_els = typ_exp ~toplevel:false ~loc:(loc_of e_els) g e_els in
+      let ns = List.map (fun (_,ei) -> let t,n = typ_exp ~toplevel:false ~loc g ei in unify ~loc:(loc_of ei) t_els t; n) hs in
       let n = Response_time.add n1 (List.fold_left Response_time.max n_els ns) in
       t_els,n
   | E_tuple(es) ->
-      let ts,ns = List.split @@ List.map (typ_exp ~toplevel:false ~loc g) es in
+      let ts,ns = List.split @@ List.map (fun ei -> 
+                    typ_exp ~toplevel:false ~loc:(loc_of ei) g ei) es 
+      in
       let n = List.fold_left Response_time.add Response_time.zero ns in
       T_tuple ts,n
   | E_fun(p,e1) ->
       let v = unknown() in
       let g' = env_extend ~loc g p v in
-      let t,dur = typ_exp ~toplevel:false ~loc g' e1 in
+      let t,dur = typ_exp ~toplevel:false ~loc:(loc_of e1) g' e1 in
       (T_fun{arg=v;dur;ret=t}, Response_time.zero)
   | E_app(e1,e2) ->
-      let t1,n1 = typ_exp ~toplevel:false ~loc g e1 in
-      let t2,n2 = typ_exp ~toplevel:(toplevel && is_TyConstr e1) ~loc g e2 in
+      let t1,n1 = typ_exp ~toplevel:false ~loc:(loc_of e1) g e1 in
+      let t2,n2 = typ_exp ~toplevel:(toplevel && is_TyConstr e1) ~loc:(loc_of e2) g e2 in
       let t = unknown () in
       let n = unknown () in
       unify ~loc:(loc_of e1) (T_fun{arg=t2;dur=n;ret=t}) t1; (* t1 in second for subtyping *)
       check_app_shape ~loc e t;
       (t, Response_time.(add n (add n1 n2)))
   | E_letIn(p,e1,e2) ->
-      let t1,n1 = typ_exp ~toplevel:false ~loc g e1 in
+      let t1,n1 = typ_exp ~toplevel:false ~loc:(loc_of e1) g e1 in
       let gen = non_expansive e1 in
       let g' = env_extend ~loc ~gen g p t1 in
       (if not toplevel then () else
@@ -389,7 +397,7 @@ let rec typ_exp ~toplevel ~loc (g:env) e =
         fprintf std_formatter "val %a : %a\n" Ast_pprint.pp_pat p pp_ty (canon t1);
        end);
 
-      let t2,n2 = typ_exp ~toplevel ~loc g' e2 in
+      let t2,n2 = typ_exp ~toplevel ~loc:(loc_of e2) g' e2 in
 
       (t2, Response_time.add n1 n2)
   | E_fix(f,(x,e1)) ->

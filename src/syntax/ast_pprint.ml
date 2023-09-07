@@ -148,6 +148,13 @@ let pp_external (fmt:fmt) (op:extern) : unit =
     | Array_get -> "array_get"
     | Array_length -> "array_length"
 
+let pp_tuple (fmt:fmt) pp vs =
+  fprintf fmt "(";
+  pp_print_list
+        ~pp_sep:(fun fmt () -> fprintf fmt ", ")
+        pp fmt vs;
+  fprintf fmt ")"
+
 
 (** pretty printer for constants *)
 let rec pp_const (fmt:fmt) (c:c) : unit =
@@ -165,8 +172,9 @@ let rec pp_const (fmt:fmt) (c:c) : unit =
         pp_external ext
   | V_loc l ->
       fprintf fmt "#%a" pp_ident l
-
-
+  | C_tuple(cs) ->
+      pp_tuple fmt pp_const cs
+      
 (** pretty printer for patterns *)
 let rec pp_pat (fmt:fmt) (p:p) : unit =
   match p with
@@ -175,11 +183,7 @@ let rec pp_pat (fmt:fmt) (p:p) : unit =
   | P_var x ->
       pp_ident fmt x
   | P_tuple ps ->
-      fprintf fmt "(";
-      pp_print_list
-            ~pp_sep:(fun fmt () -> fprintf fmt ", ")
-            pp_pat fmt ps;
-      fprintf fmt ")"
+      pp_tuple fmt pp_pat ps
 
 
 (** pretty printer for expressions *)
@@ -222,11 +226,7 @@ let rec pp_exp (fmt:fmt) (e:e) : unit =
         pp_exp e1
         pp_exp e2
   | E_tuple es ->
-     fprintf fmt "@[(";
-      pp_print_list
-            ~pp_sep:(fun fmt () -> fprintf fmt ", ")
-            pp_exp fmt es;
-      fprintf fmt ")@]"
+        pp_tuple fmt pp_exp es
   | E_reg(V ev, e0) ->
       fprintf fmt "(@[<v>reg %a last %a@])"
         pp_exp ev pp_exp e0

@@ -25,6 +25,11 @@ let frontend ~(inputs : string list) repl ?(when_repl=(fun _ -> ())) ?(relax=fal
                       gs,ds
                     with excp ->
                       close_in_noerr ic;
+                      (match excp with
+                      | Parser.Error ->
+                          error (fun fmt ->
+                            Format.fprintf fmt "Syntax error (file %s)" path)
+                      | _ -> ());
                       raise excp
                 end
                ) inputs |> List.split in

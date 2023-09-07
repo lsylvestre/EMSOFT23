@@ -104,7 +104,7 @@ let app_const e e2 r =
       | TyConstr _, v -> v, r
       | _ -> error_cannot_be_reduced (E_app(e,e2))
     end
-  | (Unit|Bool _|Int _|String _|V_loc _) ->
+  | (Unit|Bool _|Int _|String _|V_loc _|C_tuple _) ->
       error_cannot_be_reduced (E_app(e,e2))
   | External ext ->
       let n = Random.int !flag_bus_proba in
