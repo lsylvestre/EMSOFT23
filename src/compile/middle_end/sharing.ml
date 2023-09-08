@@ -37,8 +37,8 @@ let insert_kont w (x,e) =
       E_fix (f,(p,aux e1))
   | E_fun(p,e1) ->
       E_fun (p,aux e1)
-  | E_app(e1,e2) ->
-      E_app(e1, e2)
+  | E_app _ ->
+      e
   | E_reg(V ev,e0) ->
       E_reg(V (aux ev), aux e0)
   | E_exec(e1,e2,k) ->

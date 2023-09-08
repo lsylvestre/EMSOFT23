@@ -1,9 +1,12 @@
 open Ast
 open Ast_subst
 
+ (** propagate combinational expressions bound to a name used zero or one time *)
+let flag_propagate_combinational_linear = ref true
 
-(* [linear_bindings e] produces the set of the names locally defined in [e]
-  which occur (as variable) exactly once *)
+
+(* [linear_bindings e] produces the set of the names that are locally defined in [e]
+  occurring (as variable) exactly once *)
 let linear_bindings (e:e) : set =
   let h = Hashtbl.create 10 in
   let rec aux = function
@@ -56,8 +59,17 @@ let linear_bindings (e:e) : set =
 
 
 
+let rec simple_atom e =
+  match e with 
+    | E_var _ | E_const _ -> true
+    | E_tuple es -> List.for_all simple_atom es
+    | _ -> false
+
 
 let propagation ~env e =
+  let propageable e = 
+    if !flag_propagate_combinational_linear then Combinatorial.combinatorial e else 
+    simple_atom e in
   let rec prop e =
     match e with
     | E_deco _ ->
@@ -69,7 +81,7 @@ let propagation ~env e =
     | E_match(e,hs,e_els) ->
         E_match(prop e,List.map (fun (c,e) -> c,prop e) hs,prop e_els)
     | E_letIn(P_var x as p,e1,e2) ->
-        if SMap.mem x env && Combinatorial.combinatorial e1
+        if SMap.mem x env && propageable e1
         then prop (subst_p_e p (prop e1) e2) 
         else E_letIn(p,prop e1,prop e2)
     | E_letIn _ -> assert false (* already expanded, see matching.ml *)
@@ -109,5 +121,6 @@ let propagation_aux ds e =
   in 
   let env = linear_bindings e_all in
   propagation ~env e_all
+
 let propagation_pi pi =
   Map_pi.map (propagation_aux pi.ds) pi

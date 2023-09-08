@@ -30,10 +30,8 @@ let rec flat_s s =
   | S_skip -> S_skip
   | S_continue q ->
       S_continue q
-  | S_if(a,s1,so) ->
-      let bs,a' = flat a in
-      s_let_bindings bs @@
-      S_if(a', flat_s s1,Option.map flat_s so)
+  | S_if(x,s1,so) ->
+      S_if(x, flat_s s1,Option.map flat_s so)
   | S_case(a,hs, so) ->
       let bs,a' = flat a in
       s_let_bindings bs @@

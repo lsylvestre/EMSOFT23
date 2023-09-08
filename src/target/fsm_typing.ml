@@ -82,6 +82,8 @@ let add_typing_env h (x:string) (t:ty) =
    | None -> Hashtbl.add h x (canon t)
    | Some t' -> unify t t'; Hashtbl.replace h x (canon t'))
 
+
+
 let rec translate_ty =
   let hvar = Hashtbl.create 10 in 
   function
@@ -106,6 +108,7 @@ let rec translate_ty =
   | Types.T_static{elem=te;size=tz} -> TStatic{elem=translate_ty te;size=translate_ty tz}
   | Types.(T_infinity|T_fun _|T_add (_, _)|T_max (_, _)|T_le (_, _)) ->
      assert false (* already expanded *)
+
 
 
 let rec typing_c = function
@@ -205,8 +208,8 @@ let rec typing_s ~result h = function
   | S_buffer_set(x) ->
       let t = new_tvar () in
       add_typing_env h x t
-  | S_if(a,s,so) ->
-      unify TBool (typing_a h a);
+  | S_if(x,s,so) ->
+      add_typing_env h x TBool;
       typing_s ~result h s;
       Option.iter (typing_s ~result h) so
   | S_case(a,hs,os) ->

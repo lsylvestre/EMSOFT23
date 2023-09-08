@@ -11,14 +11,14 @@ let rec flat s =
   | S_buffer_set _
   | S_call _ -> 
       (* no sub-instruction *) [],s
-  | S_if(a,s1,so) ->
+  | S_if(x,s1,so) ->
     let bs1,s1' = flat s1 in
     (match so with
     | Some s2 ->
         let bs2,s2' = flat s2 in
-        bs1@bs2, S_if(a,s1',Some s2')
+        bs1@bs2, S_if(x,s1',Some s2')
     | None ->
-        bs1, S_if(a,s1',None))
+        bs1, S_if(x,s1',None))
   | S_case(a,hs, so) ->
       let bss,hs' = List.split @@ List.map (fun (qi,si) -> 
                                             let (bsi,si') = flat si in (bsi,(qi,si'))) hs in

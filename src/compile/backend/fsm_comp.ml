@@ -18,6 +18,13 @@ let new_instance =
   let c  =ref 0 in
   (fun () -> incr c; !c)
 
+let let_plug_s (a:a) (f : x -> s) : s =
+  match a with
+  | A_var x -> f x
+  | _ ->
+    let y = Ast.gensym () in
+    S_letIn(y,a,f y)
+
 let rec to_c = function
 | Ast.Unit -> Unit
 | Ast.Int (n,tz) -> Int {value=n;tsize=Fsm_typing.translate_ty tz}
@@ -55,10 +62,10 @@ let replace_arg e =
 let access ~k ~result (address:a) ~field =
   allow_heap_access := true;
   let q = Ast.gensym ~prefix:"wait_read" () in
-  let t = q, (S_if(A_call(Runtime(Not),A_var ("avm_rm_waitrequest")),
-                  (seq_ (S_set("avm_rm_read",A_const (Bool false))) @@
+  let t = q, let_plug_s (A_call(Runtime(Not),A_var ("avm_rm_waitrequest"))) (fun z -> 
+          (S_if(z,(seq_ (S_set("avm_rm_read",A_const (Bool false))) @@
                    seq_ (S_set(result,A_var "avm_rm_readdata")) @@ k),
-                   Some (S_continue q)))
+                   Some (S_continue q))))
   in
   let s =
     seq_ (S_set("avm_rm_address",A_call(Compute_address,(A_tuple [address;field])))) @@
@@ -71,11 +78,11 @@ let access ~k ~result (address:a) ~field =
 let assign ~k ~result ?(value=A_const Unit) (address:a) ~field data =
   allow_heap_assign := true;
   let q = Ast.gensym ~prefix:"wait_write" () in
-  let t = q, (S_if(A_call(Runtime(Not),A_var ("avm_wm_waitrequest")),
-                  (seq_ (S_set("avm_wm_write",A_const (Bool false))) @@
+  let t = q, let_plug_s (A_call(Runtime(Not),A_var ("avm_wm_waitrequest"))) (fun z ->
+          (S_if(z,(seq_ (S_set("avm_wm_write",A_const (Bool false))) @@
                    seq_ (S_set(result,value)) @@
                    k),
-                   Some (S_continue q)))
+                   Some (S_continue q))))
   in
   let s =
     seq_ (S_set("avm_wm_address",A_call(Compute_address,(A_tuple [address;field])))) @@
@@ -84,13 +91,6 @@ let assign ~k ~result ?(value=A_const Unit) (address:a) ~field data =
     S_continue q
   in
   S_let_transitions([t],s)
-
-let let_plug_s (a:a) (f : x -> s) : s =
-  match a with
-  | A_var x -> f x
-  | _ ->
-    let y = Ast.gensym () in
-    S_letIn(y,a,f y)
 
 let rec to_s ~statics ~tail x ~rdy ~k e =
   let return_ s =
@@ -142,7 +142,7 @@ let rec to_s ~statics ~tail x ~rdy ~k e =
   | E_if(e,e1,e2) ->
      let s1 = to_s ~statics ~tail x ~rdy ~k e1 in
      let s2 = to_s ~statics ~tail x ~rdy ~k e2 in
-     S_if(to_a e,s1,Some s2)
+     let_plug_s (to_a e) (fun z -> S_if(z,s1,Some s2))
   | E_match(e1,hs,e_els) ->
       let hs' = List.map (fun (c,e) -> to_c c, to_s ~statics ~tail x ~rdy ~k e) hs in 
       let s_els = to_s ~statics ~tail x ~rdy ~k e_els in
@@ -153,10 +153,11 @@ let rec to_s ~statics ~tail x ~rdy ~k e =
   | E_lastIn(y,e1,e2) ->
      (* todo: check if e1 is indeed always an atom, or not ? *)
      let s2 = to_s ~statics ~tail x ~rdy ~k e2 in
-     seq_ (S_if (A_call(Runtime(Not),A_var (y^"_init")),
-                 seq_ (S_set(y,to_a e1))
-                      (S_set(y^"_init",A_const (Bool true))),
-                 None)) s2
+     seq_ (let_plug_s (A_call(Runtime(Not),A_var (y^"_init"))) (fun z ->
+             S_if (z,
+                   seq_ (S_set(y,to_a e1))
+                        (S_set(y^"_init",A_const (Bool true))),
+                   None))) s2
   | E_set(y,e1) ->
       return_ @@ S_set(y,to_a e1)
   | E_step(e1,k) ->
@@ -194,21 +195,24 @@ let rec to_s ~statics ~tail x ~rdy ~k e =
       let rdy2,result2,compute2,(ts2,s2) = compile pi2 in
       let id1 = Ast.gensym ~prefix:"id" () in
       let id2 = Ast.gensym ~prefix:"id" () in
-      let s1 = S_if(A_call(Runtime(Not),A_var (id1^"_started")), 
-                    seq_ (S_set(id1^"_started",A_const (Bool true))) @@ s1,
-                    None)
+      let s1 = let_plug_s (A_call(Runtime(Not),A_var (id1^"_started"))) (fun z ->
+                 S_if(z, 
+                      seq_ (S_set(id1^"_started",A_const (Bool true))) @@ s1,
+                      None))
       in
-      let s2 = S_if(A_call(Runtime(Not),A_var (id2^"_started")), 
-                    seq_ (S_set(id2^"_started",A_const (Bool true))) @@ s2,
-                    None)
+      let s2 = let_plug_s (A_call(Runtime(Not),A_var (id2^"_started"))) (fun z -> 
+                 S_if(z,
+                      seq_ (S_set(id2^"_started",A_const (Bool true))) @@ s2,
+                      None))
       in
       seq_ (S_fsm(id1,rdy1,result1,compute1,ts1,s1,false)) @@
       seq_ (S_fsm(id2,rdy2,result2,compute2,ts2,s2,false)) @@
-      S_if(A_call(Runtime(And),A_tuple[A_var (rdy1);A_var (rdy2)]),
-          (seq_ (S_set(x,(A_tuple[A_var result1;A_var result2]))) @@
-           seq_ (S_set(id1^"_started",A_const (Bool false))) @@
-           seq_ (S_set(id2^"_started",A_const (Bool false))) @@
-                  k),None)
+      let_plug_s (A_call(Runtime(And),A_tuple[A_var (rdy1);A_var (rdy2)])) (fun z ->
+        S_if(z,
+             (seq_ (S_set(x,(A_tuple[A_var result1;A_var result2]))) @@
+              seq_ (S_set(id1^"_started",A_const (Bool false))) @@
+              seq_ (S_set(id2^"_started",A_const (Bool false))) @@
+                     k),None))
   | E_reg _ | E_exec _ ->
       assert false (* already expanded *)
 

@@ -7,8 +7,8 @@ let rec list_machines_s s =
   match s with
   | S_skip -> S_skip
   | S_continue q -> S_continue q
-  | S_if(a,s1,so) ->
-      S_if(a, list_machines_s s1,
+  | S_if(x,s1,so) ->
+      S_if(x, list_machines_s s1,
               Option.map list_machines_s so)
   | S_case(a,hs,so) ->
       S_case(a, List.map (fun (c,s) -> c,list_machines_s s) hs,

@@ -174,8 +174,8 @@ and pp_a fmt = function
 let rec pp_s ~st fmt = function
 | S_skip -> ()
 | S_continue q -> fprintf fmt "%a <= %a;" pp_ident st pp_ident q
-| S_if(a,s1,so) ->
-    fprintf fmt "@[<v 2>if %a(0) = '1' then@,%a@]" pp_a a (pp_s ~st) s1;
+| S_if(z,s1,so) ->
+    fprintf fmt "@[<v 2>if %a(0) = '1' then@,%a@]" pp_ident z (pp_s ~st) s1;
     Option.iter (fun s2 -> fprintf fmt "@,@[<v 2>else@,%a@]" (pp_s ~st) s2) so;
      fprintf fmt "@,end if;"
 | S_case(a,hs,so) ->
@@ -435,3 +435,4 @@ architecture rtl of %a is@,@[<v 2>@," pp_ident name;
 end architecture;@]\n";
 
   ( (argument,t_argument), (result,t_result) )
+

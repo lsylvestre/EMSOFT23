@@ -74,6 +74,9 @@ let () =
                 "generate a top wrapper for the whole architecture");
     ("-clk-top", Arg.Set_string clock_top,
                 "name of the top wrapper global clock");
+    
+    ("-prop",    Arg.Set show_ast_and_exit_flag,
+                 "propagate combinational expression.");
     ]
       add_input "Usage:\n  ./mixc file"
 ;;

@@ -45,7 +45,7 @@ type q = x
 type s =
   | S_skip
   | S_continue of q
-  | S_if of a * s * s option
+  | S_if of x * s * s option
   | S_case of a * (c * s) list * s option
   | S_set of x * a
   | S_setptr of x * a
@@ -121,8 +121,8 @@ let pp_tuple = Ast_pprint.pp_tuple
   | S_skip -> fprintf fmt "skip"
   | S_continue q ->
     fprintf fmt "continue %s" q
-  | S_if(a,s,so) ->
-      fprintf fmt "@[<v 2>if %a(0) = '1' then@,%a@]@," pp_a a pp_s s;
+  | S_if(x,s,so) ->
+      fprintf fmt "@[<v 2>if %s = '1' then@,%a@]@," x pp_s s;
       Option.iter (fun s' ->
         fprintf fmt "@[<v 2>else@,%a@]@,end if;" pp_s s') so
   | S_case(a,hs,so) ->

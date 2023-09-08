@@ -182,7 +182,8 @@ let rec unify ~loc t1 t2 =
 
 exception PatTypeError
 
-let rec ty_bindings ~loc p t = match p,canon t with
+let rec ty_bindings ~loc p t =
+  match p,canon t with
   | P_unit,T_const TUnit -> SMap.empty 
   | P_var x,t -> SMap.singleton x t
   | P_tuple ps,T_tuple ts ->
@@ -197,6 +198,7 @@ let rec ty_bindings ~loc p t = match p,canon t with
   | P_tuple ps,t ->
       unify ~loc t (T_tuple (List.map (fun _ -> unknown ()) ps));
       ty_bindings ~loc p t
+
 
 let initial_typing_env = SMap.empty
 
