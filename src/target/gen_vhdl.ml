@@ -178,8 +178,8 @@ let rec pp_s ~st fmt = function
     fprintf fmt "@[<v 2>if %a(0) = '1' then@,%a@]" pp_ident z (pp_s ~st) s1;
     Option.iter (fun s2 -> fprintf fmt "@,@[<v 2>else@,%a@]" (pp_s ~st) s2) so;
      fprintf fmt "@,end if;"
-| S_case(a,hs,so) ->
-    fprintf fmt "@[<v>case %a is@," pp_a a;
+| S_case(y,hs,so) ->
+    fprintf fmt "@[<v>case %a is@," pp_ident y;
     List.iter (fun (c,s) -> fprintf fmt "@[<v 2>when %a =>@,%a@]@," pp_c c (pp_s ~st) s) hs;
     Option.iter (fun s ->
       fprintf fmt "@[<v 2>when others =>@,%a@]@," (pp_s ~st) s) so;
@@ -214,9 +214,6 @@ let rec pp_s ~st fmt = function
 | S_fsm(id,rdy,x,cp,ts,s,b) ->
      let (st2,_,_) = List.assoc id !List_machines.extra_machines in
      pp_fsm fmt ~restart:b ~state_var:st2 ~compute:cp ~rdy (id,ts,s)
-| S_let_transitions _ ->
-    (* already expanded *)
-    assert false
 | S_call(op,a) ->
    fprintf fmt "%a;@," pp_call (Runtime(op),a)
 

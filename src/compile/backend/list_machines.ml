@@ -27,9 +27,6 @@ let rec list_machines_s s =
       extra_machines := (id,(sv,compute,List.map fst ts)) :: !extra_machines;
       let ts,s = list_machines (ts,s) in
       S_fsm(id,rdy,result2,compute,ts,s,b)
-  | S_let_transitions(ts,s) ->
-      S_let_transitions(List.map (fun (q,s) -> q, (list_machines_s s)) ts,
-                        list_machines_s s)
   | S_call _ -> s
 
 and list_machines (ts,s) =

@@ -82,3 +82,10 @@ module Errors = struct
     error ?loc pp
 
 end
+
+let map_split3 f l =
+  let rec aux l1 l2 l3 l =
+  match l with
+  | [] -> (List.rev l1, List.rev l2, List.rev l3)
+  | x::xs -> let (x1,x2,x3) = f x in aux (x1::l1) (x2::l2) (x3::l3) xs 
+in aux [] [] [] l

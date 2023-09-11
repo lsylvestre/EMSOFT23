@@ -52,14 +52,12 @@ OBJS= src/prelude.cmo \
       src/compile/middle_end/matching.cmo \
       src/compile/middle_end/propagate_global_constant.cmo \
       src/target/naming_convention.cmo \
-      src/compile/middle_end/sharing.cmo \
       src/compile/inspect/display_internal_steps.cmo \
       src/compile/middle_end.cmo \
       src/target/fsm_syntax.cmo \
       src/compile/inspect/display_target.cmo \
       src/target/fsm_typing.cmo \
       src/compile/backend/fsm_comp.cmo \
-      src/compile/backend/flat_transitions.cmo \
       src/compile/backend/flat_let_atom.cmo \
       src/compile/backend/list_machines.cmo \
       src/target/gen_vhdl.cmo \

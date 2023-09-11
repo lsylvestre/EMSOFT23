@@ -212,8 +212,9 @@ let rec typing_s ~result h = function
       add_typing_env h x TBool;
       typing_s ~result h s;
       Option.iter (typing_s ~result h) so
-  | S_case(a,hs,os) ->
-      let t = typing_a h a in
+  | S_case(x,hs,os) ->
+      let t = new_tvar () in
+      add_typing_env h x t; 
       List.iter (fun (c,s) -> 
           unify (typing_c c) t;
           typing_s ~result h s) hs;
@@ -229,9 +230,6 @@ let rec typing_s ~result h = function
       typing_s  ~result h s
   | S_fsm(_,rdy,result2,_,ts,s,_) ->
       typing_fsm h ~rdy ~result:result2 ~ty_result:(new_tvar()) (ts,s)
-  | S_let_transitions(ts,s) ->
-      List.iter (fun (q,s) -> typing_s ~result h s) ts;
-      typing_s ~result h s
   | S_call(op,args) ->
       let t = typing_a h args in
       unify (typing_op h t (Runtime op)) TUnit

@@ -32,14 +32,12 @@ let rec flat_s s =
       S_continue q
   | S_if(x,s1,so) ->
       S_if(x, flat_s s1,Option.map flat_s so)
-  | S_case(a,hs, so) ->
-      let bs,a' = flat a in
-      s_let_bindings bs @@
-      S_case(a',List.map (fun (x,s) -> x,flat_s s) hs,Option.map flat_s so)
+  | S_case(x,hs,so) ->
+      S_case(x,List.map (fun (x,s) -> x,flat_s s) hs,Option.map flat_s so)
   | S_set(x,a) ->
      let bs,a' = flat a in
      s_let_bindings bs @@ S_set(x,a')
-  | (S_buffer_set _) as s -> (* no sub-atoms*)
+  | (S_buffer_set _) as s -> (* no sub-instructions *)
      s
   | S_setptr(x,a) -> 
       let bs,a' = flat a in
@@ -57,8 +55,6 @@ let rec flat_s s =
       s_let_bindings bs @@ S_letIn(x,a',flat_s s)
   | S_fsm(id,rdy,result,compute,ts,s,b) ->
       S_fsm(id,rdy,result,compute,List.map (fun (x,s) -> x,flat_s s) ts, flat_s s,b)
-  | S_let_transitions(ts,s) ->
-      S_let_transitions(List.map (fun (x,s) -> x,flat_s s) ts, flat_s s)
   | S_call(op,a) ->
       let bs,a' = flat a in
       s_let_bindings bs @@ S_call(op,a')

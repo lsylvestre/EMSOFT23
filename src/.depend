@@ -4,29 +4,23 @@ src/compile/backend/flat_let_atom.cmo : \
 src/compile/backend/flat_let_atom.cmx : \
     src/target/fsm_syntax.cmx \
     src/compile/combinatorial.cmx
-src/compile/backend/flat_transitions.cmo : \
-    src/target/fsm_syntax.cmo \
-    src/compile/combinatorial.cmo
-src/compile/backend/flat_transitions.cmx : \
-    src/target/fsm_syntax.cmx \
-    src/compile/combinatorial.cmx
 src/compile/backend/fsm_comp.cmo : \
+    src/prelude.cmo \
     src/target/naming_convention.cmo \
     src/compile/middle_end.cmo \
     src/target/fsm_typing.cmo \
     src/target/fsm_syntax.cmo \
     src/compile/combinatorial.cmo \
-    src/syntax/ast_undecorated.cmo \
     src/syntax/ast_subst.cmo \
     src/syntax/ast_pprint.cmo \
     src/syntax/ast.cmo
 src/compile/backend/fsm_comp.cmx : \
+    src/prelude.cmx \
     src/target/naming_convention.cmx \
     src/compile/middle_end.cmx \
     src/target/fsm_typing.cmx \
     src/target/fsm_syntax.cmx \
     src/compile/combinatorial.cmx \
-    src/syntax/ast_undecorated.cmx \
     src/syntax/ast_subst.cmx \
     src/syntax/ast_pprint.cmx \
     src/syntax/ast.cmx
@@ -69,7 +63,6 @@ src/compile/compile.cmo : \
     src/target/fsm_typing.cmo \
     src/target/fsm_syntax.cmo \
     src/compile/backend/fsm_comp.cmo \
-    src/compile/backend/flat_transitions.cmo \
     src/compile/backend/flat_let_atom.cmo \
     src/compile/encode_reg_exec.cmo \
     src/compile/inspect/display_target.cmo \
@@ -84,7 +77,6 @@ src/compile/compile.cmx : \
     src/target/fsm_typing.cmx \
     src/target/fsm_syntax.cmx \
     src/compile/backend/fsm_comp.cmx \
-    src/compile/backend/flat_transitions.cmx \
     src/compile/backend/flat_let_atom.cmx \
     src/compile/encode_reg_exec.cmx \
     src/compile/inspect/display_target.cmx \
@@ -106,7 +98,6 @@ src/compile/inspect/display_target.cmx : \
     src/target/fsm_syntax.cmx
 src/compile/middle_end.cmo : \
     src/compile/middle_end/specialize.cmo \
-    src/compile/middle_end/sharing.cmo \
     src/compile/middle_end/propagation.cmo \
     src/compile/middle_end/propagate_global_constant.cmo \
     src/compile/middle_end/name_anonymus_functions.cmo \
@@ -124,7 +115,6 @@ src/compile/middle_end.cmo : \
     src/compile/middle_end/anf.cmo
 src/compile/middle_end.cmx : \
     src/compile/middle_end/specialize.cmx \
-    src/compile/middle_end/sharing.cmx \
     src/compile/middle_end/propagation.cmx \
     src/compile/middle_end/propagate_global_constant.cmx \
     src/compile/middle_end/name_anonymus_functions.cmx \
@@ -264,18 +254,6 @@ src/compile/middle_end/rename_main_arg.cmo : \
     src/syntax/ast.cmo
 src/compile/middle_end/rename_main_arg.cmx : \
     src/syntax/ast_subst.cmx \
-    src/syntax/ast_pprint.cmx \
-    src/syntax/ast.cmx
-src/compile/middle_end/sharing.cmo : \
-    src/typing/types.cmo \
-    src/target/naming_convention.cmo \
-    src/syntax/ast_undecorated.cmo \
-    src/syntax/ast_pprint.cmo \
-    src/syntax/ast.cmo
-src/compile/middle_end/sharing.cmx : \
-    src/typing/types.cmx \
-    src/target/naming_convention.cmx \
-    src/syntax/ast_undecorated.cmx \
     src/syntax/ast_pprint.cmx \
     src/syntax/ast.cmx
 src/compile/middle_end/specialize.cmo : \
@@ -448,9 +426,11 @@ src/syntax/pattern.cmo : \
 src/syntax/pattern.cmx : \
     src/syntax/ast.cmx
 src/target/fsm_syntax.cmo : \
-    src/operators.cmo
+    src/operators.cmo \
+    src/syntax/ast_pprint.cmo
 src/target/fsm_syntax.cmx : \
-    src/operators.cmx
+    src/operators.cmx \
+    src/syntax/ast_pprint.cmx
 src/target/fsm_typing.cmo : \
     src/typing/types.cmo \
     src/prelude.cmo \
@@ -491,14 +471,12 @@ src/typing/typing.cmo : \
     src/typing/types.cmo \
     src/prelude.cmo \
     src/operators.cmo \
-    src/frontend/fix_int_lit_size.cmo \
     src/syntax/ast_pprint.cmo \
     src/syntax/ast.cmo
 src/typing/typing.cmx : \
     src/typing/types.cmx \
     src/prelude.cmx \
     src/operators.cmx \
-    src/frontend/fix_int_lit_size.cmx \
     src/syntax/ast_pprint.cmx \
     src/syntax/ast.cmx
 src/frontend/parser.cmo : \

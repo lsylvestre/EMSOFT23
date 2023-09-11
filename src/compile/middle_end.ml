@@ -64,8 +64,4 @@ let compile (pi:pi) : pi =
   (* put a fresh name to each register *)
   let pi = Instantiate.instantiate_pi pi in
 
-  let pi = Sharing.sharing_pi pi in
-  display_pi Sharing pi;
-
-
   pi

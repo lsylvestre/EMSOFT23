@@ -21,12 +21,10 @@ let compile name ty fmt pi =
   D.display_pi D.MiddleEnd pi;
 
   let (rdy,result,compute,fsm) as design = Fsm_comp.compile pi in
+
   let statics = List.map (function x,Ast.Static_array(c,n) -> x,Fsm_syntax.Static_array(Fsm_comp.to_c c,n)) pi.statics in
 
   Display_target.(display Fsm fsm);
-
-  let fsm = Flat_transitions.flatten fsm in
-  Display_target.(display Flat_ts fsm);
 
   let fsm = Flat_let_atom.flat_let_atom fsm in
   Display_target.(display Flat fsm);

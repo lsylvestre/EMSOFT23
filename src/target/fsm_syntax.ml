@@ -42,11 +42,11 @@ type write = Delayed | Immediate
 
 type q = x
 
-type s =
+type s = (* all instructions terminates in one clock cycle *)
   | S_skip
   | S_continue of q
   | S_if of x * s * s option
-  | S_case of a * (c * s) list * s option
+  | S_case of x * (c * s) list * s option
   | S_set of x * a
   | S_setptr of x * a
   | S_setptr_write of x * a * a
@@ -55,7 +55,6 @@ type s =
   | S_letIn of x * a * s
   | S_fsm of id * x * x * q * t list * s (* id * rdy * result * compute * transition * start instruction *)
                 * bool (* <- restart *)
-  | S_let_transitions of t list * s
   | S_call of Operators.op * a
 
 and t = (x * s)
@@ -125,8 +124,8 @@ let pp_tuple = Ast_pprint.pp_tuple
       fprintf fmt "@[<v 2>if %s = '1' then@,%a@]@," x pp_s s;
       Option.iter (fun s' ->
         fprintf fmt "@[<v 2>else@,%a@]@,end if;" pp_s s') so
-  | S_case(a,hs,so) ->
-      fprintf fmt "@[<v>case %a is@," pp_a a;
+  | S_case(x,hs,so) ->
+      fprintf fmt "@[<v>case %s is@," x;
       List.iter (fun (c,s) -> fprintf fmt "@[<v 2>when %a =>@,%a@]@," pp_c c pp_s s) hs;
       Option.iter (fun s -> fprintf fmt "@[<v 2>when others => %a@]@," pp_s s) so;
       fprintf fmt "@]end case;";
@@ -144,8 +143,6 @@ let pp_tuple = Ast_pprint.pp_tuple
       fprintf fmt "@[<v>let %s = %a in@,%a@]" x pp_a a pp_s s
   | S_fsm(_,_,result,_,ts,s,b) ->
       fprintf fmt "@[<v>((%s) -> %a)%s@]" result pp_fsm (ts,s) (if b then "[restart]" else "")
-  | S_let_transitions(ts,s) ->
-      pp_fsm fmt (ts,s)
   | S_call(op,a) ->
      fprintf fmt "@[%a(%a)@]" Operators.pp_op op pp_a a
 
