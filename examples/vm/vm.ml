@@ -1,523 +1,569 @@
+type state = (short * value * short * (value * char * short * short) * unit) ;;
+
+let pause () = () ;;
 
 (* ********************************************** *)
 
 let interp () =
-  let rec loop (pc,acc,sp) =
+  let step (s : state) : state =
+    let (pc, acc, sp, other_regs, errors) = s in
+    let (env, extra_args, trap_sp, heap_top) = other_regs in
     
     print_string "pc:";   print_int pc;
-    print_string "|acc:"; print_int acc;
+    print_string "|acc:"; print_val acc;
     print_string "|sp:";  print_int sp;
     (* print_string "stack:"; print_stack(sp); *)
     print_newline ();
 
     (*  ************* precomputed values  ************* *)
 
-    let pc_plus_1 = pc + 1 in
-    let pc_plus_2 = pc + 2 in
-    let pc_plus_3 = pc + 3 in
-    let sp_plus_1 = sp + 1 in
-    let sp_plus_2 = sp + 2 in
-    let sp_minus_1 = sp - 1 in
-    let sp_minus_2 = sp - 2 in
+    let pc_plus_1 : short = pc + 1 in
+    let pc_plus_2 : short = pc + 2 in
+    let sp_plus_1 : short = sp + 1 in
+    let sp_minus_1 : short = sp - 1 in
 
     (*  ************* instructions ************* *)
+    
 
-    let on_argument (f) =
-      let v = code[pc_plus_1] in f v in
+    let acc_n ((next_pc,sp,n) : (short * short * short)) : state =
+      let v = get_stack_ofs(sp,n) in
+      (next_pc, v, sp, other_regs, errors) in
 
-    let on_arguments2 (f) =
-      let v1 = code[pc_plus_1] in
-      let v2 = code[pc_plus_2] in f (v1,v2) in
-
-    let on_arguments3 (f) =
-      let v1 = code[pc_plus_1] in
-      let v2 = code[pc_plus_2] in
-      let v3 = code[pc_plus_3] in f (v1,v2,v3) in
-
-    let acc_n (next_pc,n) =
-      (next_pc, ram[sp_minus_1 - n], sp) in
-
-    let push() =
+    let push() : state =
       let sp = push_stack(acc,sp) in
-      (pc_plus_1, acc, sp) in
+      (pc_plus_1, acc, sp, other_regs, errors) in
+
+    let env_acc_n (next_pc,sp,n) =
+      (next_pc,get_field(env,n),sp, other_regs, errors) in
+
+    let const_n (next_pc,sp,n) =
+      (next_pc,val_long n,sp, other_regs, errors) in
 
     let push_acc_n (next_pc,n) =
-      let sp_minus_1 = push_stack(acc,sp) in
-      (next_pc,ram[sp - n],sp_minus_1) in
-
-    let env_acc_n (next_pc,n) =
-      (next_pc,get_field(env[0],n),sp) in
+      let sp = push_stack(acc,sp) in
+      acc_n(next_pc,sp,n) in
 
     let push_env_acc_n (next_pc,n) =
-      (next_pc,get_field(env[0],n),sp_plus_1) in
-
-    let offsetclosure_n (next_pc,n) =
-      let v = val_ptr (ptr_val (env[0]) + n) in
-      (next_pc, v, sp) in
-
-    let pushoffsetclosure_n (next_pc,n) =
       let sp = push_stack(acc,sp) in
-      let v =  val_ptr (ptr_val (env[0]) + n) in
-      (next_pc,v,sp) in
-
-    let get_field_n (next_pc,n) =
-      assert (is_ptr (acc) == 1);
-      let v = ram[ptr_val(acc)+n] in
-      (next_pc,v,sp) in
-
-    let set_field_n (next_pc,n) =
-      assert (is_ptr (acc) == 2);
-      ram[ptr_val(acc)+n] <- (pop_stack_implace(sp_minus_1)); 
-      (next_pc,val_unit,sp_minus_1) in
-
-    let const_n (next_pc,n) =
-      (next_pc,val_long n,sp) in
+      env_acc_n(next_pc,sp,n) in
 
     let pushconst_n (next_pc,n) =
       let sp = push_stack(acc,sp) in
-      (next_pc,val_long n,sp) in
+      const_n(next_pc,sp,n) in
 
-    let binop (op) =
-      let v = val_long (op (long_val (acc), long_val (pop_stack_implace(sp_minus_1)))) in
-      (pc_plus_1,v,sp_minus_1) in
+    let rec apply((i1,i2,i3),next_extra_args,appterm,n,ofs) =
+       (* assert (is_ptr acc == 1); *)
+      let dont_care = val_unit in
+      let (arg1,sp) = if i1 then pop_stack(sp) else (dont_care,sp) in
+      let (arg2,sp) = if i2 then pop_stack(sp) else (dont_care,sp) in
+      let (arg3,sp) = if i3 then pop_stack(sp) else (dont_care,sp) in
 
-    let compbranch (test) =
-      on_arguments2 (fun (v,ofs) ->
-        if test(v,long_val acc)
-        then (pc_plus_2+ofs,acc,sp)
-        else (pc_plus_3,acc,sp)) in
+      let sp = if appterm then 
+                 let sp = sp - n + ofs in sp
+                 (* push_stack(val_long (long_of_char(extra_args)),sp) *)
+               else
+                let sp = push_stack(val_long(long_of_char(extra_args)),sp) in
+                let sp = push_stack(env,sp) in
+                let sp = push_stack(val_long(as_long(pc_plus_1)),sp) in
+                sp 
+      in
+                
+      let sp = if i3 then push_stack(arg3,sp) else sp in
+      let sp = if i2 then push_stack(arg2,sp) else sp in
+      let sp = if i1 then push_stack(arg1,sp) else sp in
+      let next_pc = as_short(long_val (get_field(acc,0))) in
+      let next_env = acc in
+      (next_pc,acc,sp,(next_env, next_extra_args, trap_sp, heap_top), errors)
+    in
 
-    let apply_acc_pop (f) =
-      let v = val_long(f(long_val acc,long_val(pop_stack_implace(sp_minus_1)))) in
-      (pc_plus_1,v,sp_minus_1) in
+    let rec offsetclosure_n (next_pc, sp, n) =
+      let v = val_ptr (ptr_val(env) + n) in
+      (next_pc, v, sp, other_regs, errors) in
 
-    let branch_when_apply_acc_code (compare) =
-      let v = code[pc_plus_1] in
-      if compare(v,acc) == 1
-      then (let ofs = code[pc_plus_2] in (pc_plus_2+ofs,acc,sp))
-      else (pc_plus_3,acc,sp) in
+    let pushoffsetclosure_n (next_pc,n) =
+      let sp = push_stack(acc,sp) in
+      offsetclosure_n (next_pc, sp, n) in
+
+    let get_field_n ((next_pc,n) : (short * short)) : state =
+      assert (is_ptr(acc));
+      let v = get_field(acc,n) in 
+      (next_pc,v,sp,other_regs, errors) in
+
+    let set_field_n ((next_pc,n) : (short * short)) : state =
+      (* assert (is_ptr (acc) == 2); ???? *)
+      let (v,sp) = pop_stack(sp) in
+      set_field(acc,n,v);
+      (next_pc,val_unit, sp, other_regs, errors) in
+
+    let rec binop_int(op,neg) =
+      let a1 = long_val acc in
+      let (v2,sp) = pop_stack(sp) in
+      let a2 = long_val(v2) in
+      (* let a2 = if neg then - a2 else a2 in *)
+      let res = match op with 
+                 | 0 -> addint(a1,a2)
+                 | 1 -> subint(a1,a2)
+                 (* | 2 -> mulint(a1,a2) *)
+                 (*| 2 -> (a1 * a2)*)
+                 (* | 1 -> divint(a1,a2)
+                 | 2 -> modint(a1,a2)*)
+                 (* | 3 -> andint(a1,a2)
+                 | 4 -> orint(a1,a2)
+                 | 5 -> xorint(a1,a2) *)
+                 (* | 6 -> lslint(a1,resize_int<32>a2)
+                 | 7 -> lsrint(a1,resize_int<32>a2) *)
+                 (*| 10 -> (asrint a1 a2)*)
+                 | _ -> 0 end 
+      in
+      let v = val_long res in
+      (pc_plus_1,v,sp_minus_1, other_regs, errors) in
+
+    let rec compare (op,a1,a2) : bool = 
+      let eq = a1 == a2 in
+      let lt = a1 < a2 in
+      match op with 
+      | 0 (* EQ *) -> eq
+      | 1 (* NEQ *) -> not(eq)
+      | 2 (* LTINT *) -> lt
+      | 3 (* LEINT *) -> lt or eq
+      | 4 (* GTINT *) -> not(lt or eq)
+      | 5 (* GEINT *) -> not(lt)
+      | _ -> false end
+    in
+
+    let rec binop_compare(op) =  
+      let a1 = long_val acc in
+      let (v2,sp) = pop_stack(sp) in
+      let a2 = long_val v2 in
+      let res = compare(op,a1,a2) in
+      let v = val_long (int_of_bool(res)) in
+      (pc_plus_1,v,sp, other_regs, errors) in
+
+    let rec make_block_n (next_pc,sp,doSetAcc,i1,i2,tag,sz) =
+         let (next_heap_top,blk) = make_block(heap_top,char_of_long(tag),sz) in
+         let () = if doSetAcc then set_field(blk,0,acc) else () in
+         let sp = if i1 then (let (v1,sp) = pop_stack(sp) in 
+                              set_field(blk,1,v1);
+                              sp) else sp in
+         let sp = if i2 then (let (v2,sp) = pop_stack(sp) in 
+                              set_field(blk,2,v2);
+                              sp) else sp in
+         (next_pc,blk,sp,(env, extra_args, trap_sp, next_heap_top), errors) in
+
+    let branch(pc,argument1) =
+      let c = as_short(argument1) in
+      (pc_plus_1 + c, acc, sp, other_regs, errors) in
+
+    let rec branch_if (doInv) =
+      let b = (long_val(acc) <> 0) in
+      let b = (is_ptr(acc)) && (if doInv then not(b) else b) in
+      if b
+      then let arg = code[pc_plus_1] in branch(pc_plus_1,arg) 
+      else (pc_plus_2, acc, sp, other_regs, errors) in
 
     (* ************************************)
+    (* assert (pc >= code.length); *)
+    let x = resize_int<8> (code[pc]) in
+    match x with       
+    | 0 (* ACC0 *) -> acc_n(pc_plus_1, sp, 0)
+    | 1 (* ACC1 *) -> acc_n(pc_plus_1, sp, 1)
+    | 2 (* ACC2 *) -> acc_n(pc_plus_1, sp, 2)
+    | 3 (* ACC3 *) -> acc_n(pc_plus_1, sp, 3)
+    | 4 (* ACC4 *) -> acc_n(pc_plus_1, sp, 4)
+    | 5 (* ACC5 *) -> acc_n(pc_plus_1, sp, 5)
+    | 6 (* ACC6 *) -> acc_n(pc_plus_1, sp, 6)
+    | 7 (* ACC7 *) -> acc_n(pc_plus_1, sp, 7)
+    | 9 (* PUSH *) -> push()
+    | 10 (* PUSHACC0 *) -> push()
+    | 11 (* PUSHACC1 *) -> push_acc_n(pc_plus_1, 1)
+    | 12 (* PUSHACC2 *) -> push_acc_n(pc_plus_1, 2)
+    | 13 (* PUSHACC3 *) -> push_acc_n(pc_plus_1, 3)
+    | 14 (* PUSHACC4 *) -> push_acc_n(pc_plus_1, 4)
+    | 15 (* PUSHACC5 *) -> push_acc_n(pc_plus_1, 5)
+    | 16 (* PUSHACC6 *) -> push_acc_n(pc_plus_1, 6)
+    | 17 (* PUSHACC7 *) -> push_acc_n(pc_plus_1, 7)
+    | 21 (* ENVACC1 *) -> env_acc_n(pc_plus_1, sp, 1)
+    | 22 (* ENVACC2 *) -> env_acc_n(pc_plus_1, sp, 2)
+    | 23 (* ENVACC3 *) -> env_acc_n(pc_plus_1, sp, 3)
+    | 24 (* ENVACC4 *) -> env_acc_n(pc_plus_1, sp, 4)
+    | 26 (* PUSHENVACC1 *) -> push_env_acc_n(pc_plus_1, 1)
+    | 27 (* PUSHENVACC2 *) -> push_env_acc_n(pc_plus_1, 2)
+    | 28 (* PUSHENVACC3 *) -> push_env_acc_n(pc_plus_1, 3)
+    | 29 (* PUSHENVACC4 *) -> push_env_acc_n(pc_plus_1, 4)
+    | 33 (* APPLY1 *) -> apply((true,false,false),0,false,0,0)
+    | 34 (* APPLY2 *) -> apply((true,true,false),1,false,0,0)
+    | 35 (* APPLY3 *) -> apply((true,true,true),2,false,0,0)
+    | 41 (* RESTART *) -> let nbargs = char_of_short(size_val(env)) - 2 in
+                          let rec loop_push(sp,i) =
+                            if i >= nbargs then sp else 
+                            let sp = push_stack(get_field(env,short_of_char(i+2)),sp) in
+                            loop_push(sp,i+1)
+                          in
+                          let sp = loop_push(sp,0) in
+                          let next_env = get_field(env,1) in
+                          let next_extra_args = extra_args + nbargs in
+                          (pc_plus_1,acc,sp, (next_env, next_extra_args, trap_sp, heap_top), errors)
+    | 45 (* OFFSETCLOSUREM2 *) -> offsetclosure_n(pc_plus_1, sp, -2)
+    | 46 (* OFFSETCLOSURE0 *) -> offsetclosure_n(pc_plus_1,sp,  0)
+    | 47 (* OFFSETCLOSURE2 *) -> offsetclosure_n(pc_plus_1, sp, 2)
+    | 49 (* PUSHOFFSETCLOSUREM2 *) -> pushoffsetclosure_n (pc_plus_1, -2)
+    | 50 (* PUSHOFFSETCLOSURE0 *) -> pushoffsetclosure_n (pc_plus_1, 0)
+    | 51 (* PUSHOFFSETCLOSURE2 *) -> pushoffsetclosure_n (pc_plus_1, 2)
+    | 58 (* ATOM0 *) -> make_block_n(pc_plus_1,sp,false,false,false,0,0)
+    | 60 (* PUSHATOM0 *) -> let sp = push_stack(acc,sp) in
+                            make_block_n(pc_plus_1,sp,false,false,false,0,0)
+    | 67 (* GETFIELD0 *) -> get_field_n(pc_plus_1, 0)
+    | 68 (* GETFIELD1 *) -> get_field_n(pc_plus_1, 1)
+    | 69 (* GETFIELD2 *) -> get_field_n(pc_plus_1, 2)
+    | 70 (* GETFIELD3 *) -> get_field_n(pc_plus_1, 3)
+
+    (* 72 GETFLOATFIELD *)
+
+    | 73 (* SETFIELD0 *) -> set_field_n(pc_plus_1, 0)
+    | 74 (* SETFIELD1 *) -> set_field_n(pc_plus_1, 1)
+    | 75 (* SETFIELD2 *) -> set_field_n(pc_plus_1, 2)
+    | 76 (* SETFIELD3 *) -> set_field_n(pc_plus_1, 3)
+
+    | 79 (* VECTLENGTH *) -> let nex_acc = val_long(as_long(size_val acc)) in
+                            (pc_plus_1,nex_acc,sp, other_regs, errors)
+    | 80 (* GETVECTITEM *) -> let (n,sp) = pop_stack(sp) in
+                              let v = get_field(acc,as_short(long_val(n))) in
+                              (pc_plus_1, v, sp, other_regs, errors)
+    | 81 (* SETVECTITEM *) -> let (n,sp) = pop_stack(sp) in
+                              let (v,sp) = pop_stack(sp) in
+                              set_field(acc,as_short(long_val(n)),v);
+                              let next_acc = val_unit in
+                              (pc_plus_1,next_acc,sp, other_regs, errors)
     
-    if pc >= code.length then pc else
-    loop (match resize_int<8> (code[pc]) with       
-          | 0 (* ACC0 *) -> acc_n(pc_plus_1, 0)
-          | 1 (* ACC1 *) -> acc_n(pc_plus_1, 1)
-          | 2 (* ACC2 *) -> acc_n(pc_plus_1, 2)
-          | 3 (* ACC3 *) -> acc_n(pc_plus_1, 3)
-          | 4 (* ACC4 *) -> acc_n(pc_plus_1, 4)
-          | 5 (* ACC5 *) -> acc_n(pc_plus_1, 5)
-          | 6 (* ACC6 *) -> acc_n(pc_plus_1, 6)
-          | 7 (* ACC7 *) -> acc_n(pc_plus_1, 7)
-          | 8 (* ACC *) -> on_argument (fun n -> acc_n(pc_plus_1, n))
-          | 9 (* PUSH *) -> push()
-          | 10 (* PUSHACC0 *) -> push()
-          | 11 (* PUSHACC1 *) -> push_acc_n(pc_plus_1, 1)
-          | 12 (* PUSHACC2 *) -> push_acc_n(pc_plus_1, 2)
-          | 13 (* PUSHACC3 *) -> push_acc_n(pc_plus_1, 3)
-          | 14 (* PUSHACC4 *) -> push_acc_n(pc_plus_1, 4)
-          | 15 (* PUSHACC5 *) -> push_acc_n(pc_plus_1, 5)
-          | 16 (* PUSHACC6 *) -> push_acc_n(pc_plus_1, 6)
-          | 17 (* PUSHACC7 *) -> push_acc_n(pc_plus_1, 7)
-          | 18 (* PUSHACC *) ->  on_argument (fun n -> push_acc_n (pc_plus_2, n))
-          | 19 (* POP *) -> on_argument (fun n -> (pc_plus_2, acc, sp - n))
-          | 20 (* ASSIGN *) -> on_argument (fun n -> (* not yet checked *)
-                                  ram[sp_minus_1-n] <- acc;
-                                  (pc_plus_2,val_unit,sp))
-          | 21 (* ENVACC1 *) -> env_acc_n(pc_plus_1, 1)
-          | 22 (* ENVACC2 *) -> env_acc_n(pc_plus_1, 2)
-          | 23 (* ENVACC3 *) -> env_acc_n(pc_plus_1, 3)
-          | 24 (* ENVACC4 *) -> env_acc_n(pc_plus_1, 4)
-          | 25 (* ENVACC *) -> on_argument (fun n -> env_acc_n(pc_plus_2, 1))
-          | 26 (* PUSHENVACC1 *) -> push_env_acc_n(pc_plus_1, 1)
-          | 27 (* PUSHENVACC2 *) -> push_env_acc_n(pc_plus_1, 2)
-          | 28 (* PUSHENVACC3 *) -> push_env_acc_n(pc_plus_1, 3)
-          | 29 (* PUSHENVACC4 *) -> push_env_acc_n(pc_plus_1, 4)
-          | 30 (* PUSHENVACC *) -> on_argument (fun n -> push_env_acc_n(pc_plus_2, n))
-          | 31 (* PUSH-RETADDR *) -> on_argument (fun ofs ->
-                                       let sp = push_stack(val_long (extra_args[0]),sp) in
-                                       let sp = push_stack(val_long (env[0]),sp) in
-                                       let sp = push_stack(val_long (pc_plus_1+ofs),sp) in
-                                       (pc_plus_2,acc,sp))
-          | 32 (* APPLY *) -> on_argument (fun args ->
-                                extra_args[0] <- args - 1;
-                                let next_pc = long_val (get_field(acc,0)) in
-                                env[0] <- acc;
-                                (next_pc,acc,sp))
-          | 33 (* APPLY1 *) -> assert (is_ptr acc == 1);
-                               let (arg,sp) = pop_stack(sp) in
-                               let sp = push_stack(val_long (extra_args[0]),sp) in
-                               let sp = push_stack(env[0],sp) in
-                               let sp = push_stack(val_long pc_plus_1,sp) in
-                               let sp = push_stack(arg,sp) in
-                               let next_pc = long_val (get_field(acc,0)) in
-                               env[0] <- acc;
-                               extra_args[0] <- 0;
-                               (next_pc,acc,sp)
-          | 34 (* APPLY2 *) -> let (arg1,sp) = pop_stack(sp) in
-                               let (arg2,sp) = pop_stack(sp) in
-                               let sp = push_stack(val_long (extra_args[0]),sp) in
-                               let sp = push_stack (env[0],sp) in
-                               let sp = push_stack(val_long pc_plus_1,sp) in
-                               let sp = push_stack(arg2,sp) in
-                               let sp = push_stack(arg1,sp) in
-                               let next_pc = long_val (get_field(acc,0)) in
-                               env[0] <- acc;
-                               extra_args[0] <- 1;
-                               (next_pc,acc,sp)                 
+      (* 82 GETSTRINGCHAR *)
+      (* 83 SETSTRINGCHAR *)
+    
+    | 85 (* BRANCHIF *) -> branch_if(false)
+    | 86 (* BRANCHIFNOT *) -> branch_if(true)
+    | 88 (* BOOLNOT *) -> (pc_plus_1,val_long (bnot (long_val (acc))), sp, other_regs, errors)
+    | 90 (* POPTRAP *) -> let sp = sp_minus_1 in
+                          let (v,sp) = pop_stack(sp) in
+                          let next_trap_sp = as_short(long_val(v)) in
+                          let sp = sp - 2 in
+                          (pc_plus_1,acc,sp,(env, extra_args, next_trap_sp, heap_top), errors)
+    | 91 (* RAISE *) -> (* if trap_sp = (-1)   (* i.e., uncaught_exception *)
+                        then (143,acc,sp, other_regs, errors) else *)
+                        let sp = trap_sp in
+                        let (v0,sp) = pop_stack(sp) in
+                        let next_pc = as_short(long_val(v0)) in
+                        let (v1,sp) = pop_stack(sp) in
+                        let next_trap_sp = as_short(long_val(v1)) in
+                        let (v2,sp) = pop_stack(sp) in
+                        let next_env = v2 in
+                        let (v3,sp) = pop_stack(sp) in
+                        let next_extra_args = char_of_long(long_val(v3)) in
+                        (next_pc,acc,sp, (next_env, next_extra_args, next_trap_sp, heap_top), errors)
+    | 99  (* CONST0 *) -> const_n(pc_plus_1, sp, 0)
+    | 100 (* CONST1 *) -> const_n(pc_plus_1, sp, 1)
+    | 101 (* CONST2 *) -> const_n(pc_plus_1, sp, 2)
+    | 102 (* CONST3 *) -> const_n(pc_plus_1, sp, 3)
+    | 104 (* PUSHCONST0 *) -> pushconst_n(pc_plus_1, 0)
+    | 105 (* PUSHCONST1 *) -> pushconst_n(pc_plus_1, 1)
+    | 106 (* PUSHCONST2 *) -> pushconst_n(pc_plus_1, 2)
+    | 107 (* PUSHCONST3 *) -> pushconst_n(pc_plus_1, 3)
 
-          | 35 (* APPLY3 *) -> let (arg1,sp) = pop_stack(sp) in
-                               let (arg2,sp) = pop_stack(sp) in
-                               let (arg3,sp) = pop_stack(sp) in
-                               let sp = push_stack(val_long (extra_args[0]),sp) in
-                               let sp = push_stack (env[0],sp_minus_2) in
-                               let sp = push_stack(val_long pc_plus_1,sp_minus_1) in
-                               let sp = push_stack(arg3,sp) in
-                               let sp = push_stack(arg2,sp_plus_1) in
-                               let sp = push_stack(arg1,sp_plus_2) in
-                               let next_pc = long_val (get_field(acc,0)) in
-                               env[0] <- acc;
-                               extra_args[0] <- 2;
-                               (next_pc,acc,sp)          
+    | 110 (* ADDINT *) -> binop_int(0,false)
+    | 111 (* SUBINT *) -> binop_int(1,true)
+    | 112 (* MULINT *) -> binop_int(2,false)
+    (*| 113 (* DIVINT *) -> binop_int(2,false)
+    | 114 (* MODINT *) -> binop_int(3,false)*)
+    (* | 115 (* ANDINT *) -> binop_int(4,false)
+    | 116 (* ORINT *) -> binop_int(5,false)
+    | 117 (* XORINT *) -> binop_int(6,false)
+    | 118 (* LSLINT *) -> binop_int(7,false)
+    | 119 (* LSRINT *) -> binop_int(8,false) *)
+    (* | 120 (* ASRINT *) -> binop(asrint)*)
+    
+    (* 130 GETMETHOD *)
 
-           | 36 (* APPTERM *) -> on_arguments2 (fun (n,s) -> (* not yet checked *)
-                                  let rec w i =
-                                    if i > n then () else
-                                    ram[sp-n-s-i] <- ram[sp-i]; w(i+1)
-                                  in w(1);
-                                  let next_sp = sp - n - s in
-                                  let next_pc = long_val (get_field(acc,0)) in
-                                  env[0] <- acc;
-                                  extra_args[0] <- extra_args[0] + n - 1;
-                                  (next_pc,acc,next_sp))
-          | 37 (* APPTERM1 *) -> on_argument (fun n ->
-                                    let (arg,sp) = pop_stack(sp) in
-                                    let sp = sp - n + 1 in
-                                    let sp = push_stack(arg,sp) in
-                                    env[0] <- acc;
-                                    let next_pc = long_val (get_field(acc,0)) in
-                                    (next_pc,acc,sp))
-          | 38 (* APPTERM2 *) -> on_argument (fun n ->
-                                    let (arg1,sp) = pop_stack(sp) in
-                                    let (arg2,sp) = pop_stack(sp) in
-                                    let sp = sp - n + 2 in
-                                    let sp = push_stack(arg2,sp) in
-                                    let sp = push_stack(arg1,sp) in
-                                    env[0] <- acc;
-                                    let next_pc = long_val (get_field(acc,0)) in
-                                    extra_args[0] <- extra_args[0] + 1;
-                                    (next_pc,acc,sp))
-          | 39 (* APPTERM3 *) -> on_argument (fun n ->
-                                    let (arg1,sp) = pop_stack(sp) in
-                                    let (arg2,sp) = pop_stack(sp) in
-                                    let (arg3,sp) = pop_stack(sp) in
-                                    let sp = sp - n + 3 in
-                                    let sp = push_stack(arg3,sp) in
-                                    let sp = push_stack(arg2,sp) in
-                                    let sp = push_stack(arg1,sp) in
-                                    env[0] <- acc;
-                                    let next_pc = long_val (get_field(acc,0)) in
-                                    extra_args[0] <- extra_args[0] + 2;
-                                    (next_pc,acc,sp))
-          | 40 (* RETURN *) -> let n = code[pc_plus_1] in
-                               let sp = sp - n in
-                               if extra_args[0] > 0 then (
-                                 extra_args[0] <- extra_args[0] - 1;
-                                 env[0] <- acc;
-                                 let next_pc = long_val (get_field(acc,0)) in
-                                 (next_pc, acc, sp))
-                               else (
-                                 let (v,sp) = pop_stack(sp) in
-                                 let next_pc = long_val v in (* long_val ?  next_sp-1 ? *)
-                                 let (w,sp) = pop_stack(sp) in 
-                                 env[0] <- w;
-                                 let (u,sp) = pop_stack(sp) in 
-                                 extra_args[0] <- long_val(u);
-                                 (next_pc,acc,sp) 
-                               )
-          | 41 (* RESTART *) -> let v = env[0] in
-                                let nbargs = size_val(v) - 2 in
-                                let rec loop_push(sp,i) =
-                                  if i >= nbargs then sp else 
-                                  let sp = push_stack(get_field(v,i+2),sp) in
-                                  loop_push(sp,i+1)
-                                in
-                                let sp = loop_push(sp,0) in
-                                env[0] <- get_field(v,1);
-                                extra_args[0] <- extra_args[0] + nbargs;
-                                (pc_plus_1,acc,sp)
-          | 42 (* GRAB *) -> on_argument (fun n -> 
-                               let x = extra_args[0] in
-                               if x >= n then ( extra_args[0] <- x - n; 
-                                                (pc_plus_2,acc,sp) ) 
-                               else ( 
-                                 let next_acc = make_block(closure_tag,x + 3) in
-                                 set_field(next_acc, 0, val_long (pc_plus_2 - 3));
-                                 set_field(next_acc, 1, env[0]);
-                                 let rec w(i,sp) =
-                                   if i > x then sp else
+    (*| 137 (* ULTINT *) -> TODO
+    | 138 (* UGEINT *) -> TODO *)
+
+    (* 141 GETPUBMET *)
+    (* 142 GETDYNMET *)
+
+    | 121 (* EQ *) -> binop_compare(0)
+    | 122 (* NEQ *) -> binop_compare(1)
+    | 123 (* LTINT *) -> binop_compare(2)
+    | 124 (* LEINT *) -> binop_compare(3)
+    | 125 (* GTINT *) -> binop_compare(4)
+    | 126 (* GEINT *) -> binop_compare(5) 
+    | 129 (* ISINT *) -> (pc_plus_1, val_long(int_of_bool(is_int(acc))), sp, other_regs, errors)
+    | 143 (* STOP *) -> print_string "STOP : "; s
+     | _ ->
+
+      let pc_plus_3 : short = pc + 3 in
+      let extra_args_gt_0 : bool = extra_args > 0 in
+
+      let rec compbranch(op,n,ofs) =
+        let v = long_val acc in
+        let b = compare(op,n,v) in
+        (* pause (); *)
+        if b
+        then (let c = pc_plus_2 + as_short(ofs) in
+             (c,acc,sp, other_regs, errors))
+        else (pc_plus_3,acc,sp, other_regs, errors) in
+
+      (* ============================================================================= *)
+      (let argument1 = code[pc_plus_1] in
+      match x with
+      | 8 (* ACC *) -> acc_n(pc_plus_1, sp, as_short(argument1))
+      | 18 (* PUSHACC *) -> push_acc_n (pc_plus_2, as_short(argument1))
+      | 19 (* POP *) -> (pc_plus_2, acc, sp - as_short(argument1), other_regs, errors)
+      | 20 (* ASSIGN *) -> ram_set(sp_minus_1 - as_short(argument1), acc);
+                           (pc_plus_2,val_unit,sp, other_regs, errors)
+      | 25 (* ENVACC *) -> env_acc_n(pc_plus_2, sp, as_short(argument1))
+      | 30 (* PUSHENVACC *) -> push_env_acc_n(pc_plus_2, as_short(argument1))
+      | 31 (* PUSH-RETADDR *) -> let sp = push_stack(val_long(long_of_char(extra_args)),sp) in
+                                 let c = val_long (as_long (pc_plus_1 + as_short(argument1))) in
+                                 let sp = push_stack(env,sp) in
+                                 let sp = push_stack(c,sp) in
+                                 (pc_plus_2,acc,sp,other_regs, errors)
+      | 32 (* APPLY *) -> let next_pc = as_short(long_val(get_field(acc,0))) in
+                          let next_env = acc in
+                          let next_extra_args = char_of_long(argument1) - 1 in
+                          (next_pc,acc,sp,(next_env, next_extra_args, trap_sp, heap_top), errors)
+      | 37 (* APPTERM1 *) -> apply((true,false,false),extra_args,true,as_short(argument1),1)
+      | 38 (* APPTERM2 *) -> apply((true,true,false),extra_args+1,true,as_short(argument1),2)
+      | 39 (* APPTERM3 *) -> apply((true,true,true),extra_args+2,true,as_short(argument1),3)
+      | 40 (* RETURN *) -> let sp = sp - as_short(argument1) in
+                           if extra_args_gt_0 then (
+                             let next_env = acc in       
+                             let next_extra_args = extra_args - 1 in
+                             let next_pc = as_short(long_val (get_field(acc,0))) in
+                             (next_pc, acc, sp,(next_env, next_extra_args, trap_sp, heap_top), errors))
+                           else (
+                             let (v0,sp) = pop_stack(sp) in
+                             let next_pc = as_short(long_val v0) in
+                             let (v1,sp) = pop_stack(sp) in 
+                             let next_env = v1 in
+                             let (u,sp) = pop_stack(sp) in 
+                             let next_extra_args = char_of_long(long_val(u)) in
+                             (next_pc,acc,sp,(next_env, next_extra_args, trap_sp, heap_top), errors)
+                           )
+     | 42 (* GRAB *) ->  let n = char_of_long(argument1) in
+                         let x = extra_args in
+                         if x >= n then ( let next_extra_args = x - n in
+                                          (pc_plus_2,acc,sp, (env, next_extra_args, trap_sp, heap_top), errors) ) 
+                         else ( 
+                           let (next_heap_top, next_acc) = make_block(heap_top,closure_tag,short_of_char(x + 3)) in
+                           set_field(next_acc, 0, val_long (as_long(pc_plus_2 - 3)));
+                           set_field(next_acc, 1, env);
+                           let rec w(i,sp) =
+                             if i > x then sp else
+                             let (v,sp) = pop_stack(sp) in
+                             set_field(next_acc,short_of_char(i+2),v);
+                             w(i+1,sp)
+                           in
+                           let sp = w(0,sp) in
+                           let (v,sp) = pop_stack(sp) in
+                           let next_pc = as_short(long_val v) in 
+                           let (w,sp) = pop_stack(sp) in
+                           let next_env = w in
+                           let (u,sp) = pop_stack(sp) in
+                           let next_extra_args = char_of_long(long_val(u)) in
+                           (next_pc,next_acc,sp, (next_env, next_extra_args, trap_sp, next_heap_top), errors)) 
+      | 48 (* OFFSETCLOSURE *) -> offsetclosure_n(pc_plus_2, sp, as_short(argument1))
+      | 52 (* PUSHOFFSETCLOSURE *) -> pushoffsetclosure_n (pc_plus_2, as_short(argument1))
+      | 53 (* GETGLOBAL *) -> let v = global_get (as_short(argument1)) in 
+                             (pc_plus_2, v, sp, other_regs, errors)
+      | 54 (* PUSHGETGLOBAL *) ->  let sp = push_stack(acc,sp) in
+                                    let v = global_get (as_short(argument1)) in
+                                    (pc_plus_2, v, sp_plus_1, other_regs, errors)
+      | 57 (* SETGLOBAL *) ->  global_set(as_short(argument1),acc);
+                                (pc_plus_2,val_unit,sp, other_regs, errors)
+
+      | 59 (* ATOM *) -> make_block_n(pc_plus_2,sp,false,false,false,argument1,0)
+      | 61 (* PUSHATOM *) -> let sp = push_stack(acc,sp) in
+                             make_block_n(pc_plus_2,sp,false,false,false,argument1,0)
+      | 63 (* MAKEBLOCK1 *) -> make_block_n(pc_plus_2,sp,true,false,false,argument1,1)
+      | 64 (* MAKEBLOCK2 *) -> make_block_n(pc_plus_2,sp,true,true,false,argument1,2)
+      | 65 (* MAKEBLOCK3 *) -> make_block_n(pc_plus_2,sp,true,true,false,argument1,3)
+
+       (* 66 MAKEFLOATBLOCK *)
+
+      | 71 (* GETFIELD *) -> get_field_n (pc_plus_2, as_short(argument1))
+      | 77 (* SETFIELD *) -> set_field_n (pc_plus_2, as_short(argument1))
+
+      (* 78 SETFLOATFIELD *)
+
+      | 87 (* SWITCH *) -> let n = argument1 in
+                           let ofs = 
+                             if (is_int acc)
+                             then as_short(long_val acc)
+                             else let idx : short = tag_val acc in 
+                                  as_short(n) + idx
+                           in 
+                           (pc_plus_2 + as_short(code[pc_plus_2+ofs]), acc, sp, other_regs, errors)
+
+      | 84 (* BRANCH *) -> branch(pc,argument1)
+      | 89 (* PUSHTRAP *) -> let ofs = argument1 in
+                             let sp = push_stack(val_long(long_of_char(extra_args)),sp) in
+                             let sp = push_stack(env,sp) in
+                             let c = val_long(as_long(pc_plus_1+as_short(ofs))) in
+                             let sp = push_stack(val_long(as_long(trap_sp)),sp) in
+                             let sp = push_stack(c,sp) in
+                             let next_trap_sp = sp in
+                             (pc_plus_2, acc, sp,(env, extra_args, next_trap_sp, heap_top), errors)
+    
+      (* 92 CHECK-SIGNALS : unsupported *)
+     
+      | 93 (* C-CALL1 *) -> let p = argument1 in
+                            let sp = push_stack(env,sp) in
+                            let acc = call (p,acc) in
+                            let (v,sp) = pop_stack(sp) in
+                            let next_env = v in 
+                            (pc_plus_2,acc,sp, (next_env, extra_args, trap_sp, heap_top), errors)
+     
+      (* 94 C-CALL2 : unsupported *) 
+      (* 95 C-CALL3 : unsupported *) 
+      (* 96 C-CALL4 : unsupported *) 
+      (* 97 C-CALL5 : unsupported *) 
+      (* 98 C-CALLN : unsupported *) 
+    
+      | 103 (* CONSTINT *) -> const_n(pc_plus_2, sp, argument1)
+      | 108 (* PUSHCONSTINT *) -> pushconst_n(pc_plus_2, argument1)
+
+
+      | 127 (* OFFSETINT *) -> let ofs = argument1 in 
+                               let v = val_long(addint(long_val acc, ofs)) in
+                               (pc_plus_2, v, sp, other_regs, errors)
+      | 128 (* OFFSETREF *) -> let ofs = argument1 in 
+                               let f0 = get_field(acc,0) in
+                               let v = val_long((long_val f0) + ofs) in
+                               set_field(acc,0,v);
+                               (pc_plus_2,val_unit,sp, other_regs, errors)
+      | 139 (* BULTINT *) -> compbranch(2,argument1,long_val(acc))
+      | 140 (* BUGEINT *) -> compbranch(5,argument1,long_val(acc)) 
+      | _ ->
+        (* ============================================================================= *)
+        (let argument2 = code[pc_plus_2] in
+         match x with
+        | 36 (* APPTERM *) -> let n = argument1 in
+                              let s = argument2 in (* not yet checked *)
+                              let n8 = char_of_long(n) in
+                              let n = as_short(n) in
+                              let s = as_short(s) in
+                              let next_sp = sp - n - s in
+                              let rec w i =
+                                if i > n then () else (
+                                  ram_set(next_sp-i, ram_get(sp-i)); w(i+1)
+                                )
+                              in w(1);
+                              let next_pc = as_short(long_val(get_field(acc,0))) in
+                              let next_env = acc in
+                              let next_extra_args = extra_args + n8 - 1 in
+                              (next_pc,acc,sp,(next_env, next_extra_args, trap_sp, heap_top), errors)
+        | 43 (* CLOSURE *) -> let n = argument1 in
+                              let ofs = argument2 in
+                              let n = as_short(n) in
+                              let sp = if n > 0 then push_stack(acc,sp) else sp in
+                              let (next_heap_top, next_acc) = make_closure(heap_top,pc_plus_2+as_short(ofs),n+1) in
+                              let rec fill(i,sp) =
+                                if i >= n then sp else
+                                (let (v,sp) = pop_stack(sp) in
+                                 set_field(next_acc,i,v); fill(i+1,sp))
+                              in 
+                              let sp = fill(1,sp) in
+                              (pc_plus_3, next_acc, sp,  (env, extra_args, trap_sp, next_heap_top), errors)
+        | 55 (* GETGLOBALFIELD *) -> let n = argument1 in
+                                     let p = argument2 in
+                                     let v = get_field(global_get (as_short(n)),as_short(p)) in
+                                     (pc_plus_3,v,sp, other_regs, errors)
+        | 56 (* PUSHGETGLOBALFIELD *) -> let n = argument1 in
+                                         let p = argument2 in
+                                         let sp = push_stack(acc,sp) in
+                                         let v = get_field(global_get (as_short(n)),as_short(p)) in
+                                         (pc_plus_3,v,sp_plus_1, other_regs, errors)
+
+        | 62 (* MAKEBLOCK *) -> let sz = as_short(argument1) in
+                                let tag = char_of_long(argument2) in
+                                let (next_heap_top,blk) = make_block(heap_top,tag,sz) in
+                                set_field(blk,0,acc);
+                                let rec fill(i,sp) =
+                                   if i >= sz then sp else
                                    let (v,sp) = pop_stack(sp) in
-                                   set_field(next_acc,i+2,v);
-                                   w(i+1,sp) 
-                                 in
-                                 let sp = w(0,sp) in
-                                 let (v,sp) = pop_stack(sp) in
-                                 let next_pc = long_val v in 
-                                 let (w,sp) = pop_stack(sp) in
-                                 env[0] <- w;
-                                 let (u,sp) = pop_stack(sp) in
-                                 extra_args[0] <- long_val(u);
-                                 (next_pc,next_acc,sp)))
-          | 43 (* CLOSURE *) -> on_arguments2 (fun (n,ofs) ->
-                                  let sp = if n > 0 then push_stack(acc,sp) else sp in
-                                  let next_acc = make_closure(pc_plus_2+ofs,n+1) in
-                                  let rec fill(i,sp) =
-                                    if i >= n then sp else
-                                    (let (v,sp) = pop_stack(sp) in
-                                     set_field(next_acc,i,v); fill(i+1,sp))
-                                  in 
-                                  let sp = fill(1,sp) in
-                                  (pc_plus_3, next_acc, sp))
+                                   (set_field(blk,i,v); fill(i+1,sp))
+                                in 
+                                let sp = fill(1,sp) in
+                                (pc_plus_3,blk,sp,(env, extra_args, trap_sp, next_heap_top), errors)
+        | 131 (* BEQ *) -> compbranch(0,argument1,argument2)
+        | 132 (* BNEQ *) -> compbranch(1,argument1,argument2)
+        | 133 (* BLTINT *) -> compbranch(2,argument1,argument2)
+        | 134 (* BLEINT *) -> compbranch(3,argument1,argument2)
+        | 135 (* BGTINT *) -> compbranch(4,argument1,argument2)
+        | 136 (* BGEINT *) -> compbranch(5,argument1,argument2)
+        | _ ->
+          (* ============================================================================= *)
+          (let argument3 = code[pc_plus_3] in
+           match x with
+           | 44 (* CLOSUREREC *) ->  let f = as_short(argument1) in
+                                     let v = as_short(argument2) in
+                                     let o = as_short(argument3) in
+                                     let sp = if v > 0 then push_stack(acc,sp) else sp in
+                                     let closure_size = (2 * f) - 1 + v in  
+                                     let (next_heap_top,next_acc) = make_block(heap_top,closure_tag,closure_size) in
+                                     set_field(next_acc, 0, val_long (as_long(pc_plus_3+o)));
+                                     let rec w0(i,sp) =
+                                       if i >= v then sp else
+                                       let (x,sp) = pop_stack(sp) in
+                                       (set_field(next_acc, i + 2 * f - 1, x); w0(i+1,sp))
+                                     in 
+                                     let sp = w0(0,sp) in
+                                     let rec w1(i) =
+                                       if i >= f then () else
+                                       (set_field(next_acc,2*i-1,val_long(make_header(infix_tag,2*i)));
+                                        set_field(next_acc,2*i,val_long(as_long(pc_plus_2+as_short(code[pc_plus_3 + i]))));
+                                        w1(i+1))
+                                     in 
+                                     w1(1);
+                                     let sp = push_stack(next_acc,sp) in
+                                     let rec w3(i,sp) =
+                                       if i >= f then sp else
+                                       let sp = push_stack(val_ptr (ptr_val next_acc + (2 * i)),sp) in
+                                       w3(i+1,sp)
+                                     in
+                                     let sp = w3(1,sp) in
+                                     (pc_plus_3+f, next_acc, sp,(env, extra_args, trap_sp, next_heap_top), errors)
 
-          | 44 (* CLOSUREREC *) -> on_arguments3 (fun (f,v,o) ->
-                                       let sp = if v > 0 then push_stack(acc,sp) else sp in
-                                       let closure_size = (2 * f) - 1 + v in  
-                                       let next_acc = make_block(closure_tag,closure_size) in
-                                       set_field(next_acc, 0, val_long (pc_plus_3+o));
-                                       let rec w0(i,sp) =
-                                         if i >= v then sp else
-                                         let (x,sp) = pop_stack(sp) in
-                                         (set_field(next_acc, i + 2 * f - 1, x); w0(i+1,sp))
-                                       in 
-                                       let sp = w0(0,sp) in
-                                       let rec w1(i) =
-                                         if i >= f then () else
-                                         (set_field(next_acc,2*i-1,make_header(infix_tag,2*i));
-                                          set_field(next_acc,2*i,val_long(pc+2+code[pc_plus_3 + i]));
-                                          w1(i+1))
-                                       in 
-                                       w1(1);
-                                       let sp = push_stack(next_acc,sp) in
-                                       let rec w3(i,sp) =
-                                         if i >= f then sp else
-                                         let sp = push_stack(val_ptr (ptr_val next_acc + (2 * i)),sp) in
-                                         w3(i+1,sp)
-                                       in
-                                       let sp = w3(1,sp) in
-                                       (pc_plus_3+f, next_acc, sp))
-
-          | 45 (* OFFSETCLOSUREM2 *) -> offsetclosure_n(pc_plus_1, -2)
-          | 46 (* OFFSETCLOSURE0 *) -> offsetclosure_n(pc_plus_1, 0)
-          | 47 (* OFFSETCLOSURE2 *) -> offsetclosure_n(pc_plus_1, 2)
-          | 48 (* OFFSETCLOSURE *) -> on_argument (fun n -> offsetclosure_n(pc_plus_2, n))
-
-          | 49 (* PUSHOFFSETCLOSUREM2 *) -> pushoffsetclosure_n (pc_plus_1, -2)
-          | 50 (* PUSHOFFSETCLOSURE0 *) -> pushoffsetclosure_n (pc_plus_1, 0)
-          | 51 (* PUSHOFFSETCLOSURE2 *) -> pushoffsetclosure_n (pc_plus_1, 2)
-          | 52 (* PUSHOFFSETCLOSURE *) -> on_argument (fun n -> pushoffsetclosure_n (pc_plus_2, n))
-          | 53 (* GETGLOBAL *) -> on_argument (fun n ->
-                                      let v = global_get n in 
-                                      (pc_plus_2, v, sp))
-          | 54 (* PUSHGETGLOBAL *) ->
-                                      on_argument (fun n ->
-                                        push_stack_implace(sp,acc);
-                                        let v = global_get n in
-                                        (pc_plus_2,v , sp_plus_1))
-          | 55 (* GETGLOBALFIELD *) -> on_arguments2 (fun (n,p) ->
-                                         let v = get_field(global_get n,p) in
-                                         (pc_plus_2+1,v,sp))
-          | 56 (* PUSHGETGLOBALFIELD *) -> on_arguments2 (fun (n,p) ->
-                                            let sp = push_stack(acc,sp) in
-                                            let v = get_field(global_get n,p) in
-                                            (pc_plus_2+1,v,sp_plus_1))
-          | 57 (* SETGLOBAL *) -> on_argument (fun n ->
-                                    global_set(n,acc);
-                                    (pc_plus_2,val_unit,sp))
-          | 58 (* ATOM0 *) -> (pc_plus_1, make_block(0,0), sp)
-          | 59 (* ATOM *) -> on_argument (fun tag -> 
-                                let a = make_block(tag,0) in
-                                (pc_plus_2, a,sp))
-          | 60 (* PUSHATOM0 *) -> push_stack_implace(sp,acc);
-                                  (pc_plus_1, make_block(0,0), sp_plus_1)
-          | 61 (* PUSHATOM *) -> on_argument (fun tag -> 
-                                    let sp = push_stack(acc,sp) in
-                                    let a = make_block(tag,0) in
-                                    (pc_plus_2,a,sp_plus_1))
-          | 62 (* MAKEBLOCK *) -> let sz = code[pc_plus_1] in
-                                  let tag = code[pc_plus_2] in 
-                                  let blk = make_block(tag,sz) in
-                                  set_field(blk,0,acc);
-                                  let rec fill(i,sp) =
-                                     if i >= sz then sp else
-                                     let (v,sp) = pop_stack(sp) in
-                                     (set_field(blk,i,v); fill(i+1,sp))
-                                  in 
-                                  let sp = fill(1,sp) in
-                                  (pc_plus_3,blk,sp)
-          | 63 (* MAKEBLOCK1 *) -> on_argument (fun tag ->
-                                     let blk = make_block(tag,1) in
-                                     set_field(blk,0,acc);
-                                     (pc_plus_2,blk,sp))
-          | 64 (* MAKEBLOCK2 *) -> on_argument (fun tag ->
-                                     let blk = make_block(tag,2) in
-                                     set_field(blk,0,acc);
-                                     let (v,sp) = pop_stack(sp) in
-                                     set_field(blk,1,v);
-                                     (pc_plus_2,blk,sp))
-          | 65 (* MAKEBLOCK3 *) -> let tag = code[pc_plus_1] in 
-                                   let blk = make_block(tag,3) in
-                                   set_field(blk,0,acc);
-                                   set_field(blk,1,pop_stack_implace(sp_minus_1));
-                                   let sp_minus_2 = sp_minus_2 in
-                                   set_field(blk,2,pop_stack_implace(sp_minus_2));
-                                   (pc_plus_2,blk,sp_minus_2)
-         
-         (* 66 MAKEFLOATBLOCK *)
-
-          | 67 (* GETFIELD0 *) -> get_field_n(pc_plus_1, 0)
-          | 68 (* GETFIELD1 *) -> get_field_n(pc_plus_1, 1)
-          | 69 (* GETFIELD2 *) -> get_field_n(pc_plus_1, 2)
-          | 70 (* GETFIELD3 *) -> get_field_n(pc_plus_1, 3)
-          | 71 (* GETFIELD *) -> on_argument (fun n -> get_field_n (pc_plus_2, n))
-
-          (* 72 GETFLOATFIELD *)
-
-          | 73 (* SETFIELD0 *) -> set_field_n(pc_plus_1, 0)
-          | 74 (* SETFIELD1 *) -> set_field_n(pc_plus_1, 1)
-          | 75 (* SETFIELD2 *) -> set_field_n(pc_plus_1, 2)
-          | 76 (* SETFIELD3 *) -> set_field_n(pc_plus_1, 3)
-          | 77 (* SETFIELD *) -> on_argument (fun n -> set_field_n(pc_plus_2, n))
-
-          (* 78 SETFLOATFIELD *)
-
-
-          | 79 (* VECTLENGTH *) -> let nex_acc = val_long (size_val acc) in
-                                  (pc_plus_1,nex_acc,sp)
-          | 80 (* GETVECTITEM *) -> let (n,sp) = pop_stack(sp) in
-                                    let v = get_field(acc,long_val(n)) in
-                                     print_int v;
-                                    (pc_plus_1, v, sp)
-          | 81 (* SETVECTITEM *) -> let (n,sp) = pop_stack(sp) in
-                                    let (v,sp) = pop_stack(sp) in
-                                    set_field(acc,long_val(n),v);
-                                    let next_acc = val_unit in
-                                    (pc_plus_1,next_acc,sp)
-
-            (* 82 GETSTRINGCHAR *)
-            (* 83 SETSTRINGCHAR *)
-
-          | 84 (* BRANCH *) -> (pc_plus_1+code[pc_plus_1], acc, sp)
-          | 85 (* BRANCHIF *) -> let next_pc = if (is_ptr(acc) == 0)
-                                                 && (long_val(acc) <> 0) 
-                                                then pc_plus_1+code[pc_plus_1]
-                                                else pc_plus_2
-                                 in (next_pc, acc, sp)
-          | 86 (* BRANCHIFNOT *) -> let next_pc = if (is_ptr(acc) == 0) 
-                                                 && (long_val(acc) == 0) 
-                                                then pc_plus_1 + code[pc_plus_1]
-                                                else pc_plus_2
-                                    in (next_pc, acc, sp)
-          | 87 (* SWITCH *) -> on_argument (fun n ->
-                                 let ofs = 
-                                   if (is_int acc) == 1
-                                   then long_val acc
-                                   else let idx = tag_val acc in (n land 65535) + idx (* 65535 := 0xFFFF *)
-                                 in 
-                                 (pc_plus_2 + code[pc_plus_2+ofs], acc, sp))
-          | 88 (* BOOLNOT *) -> (pc_plus_1,val_long (bnot (long_val (acc))), sp)
-          | 89 (* PUSHTRAP *) -> on_argument (fun ofs -> 
-                                   let sp = push_stack(val_long(extra_args[0]),sp) in
-                                   let sp = push_stack(env[0],sp) in
-                                   let sp = push_stack(trap_sp[0],sp) in
-                                   let sp = push_stack(val_long(pc_plus_1+ofs),sp) in
-                                   trap_sp[0] <- sp;
-                                   (pc_plus_2, acc, sp))
-          | 90 (* POPTRAP *) ->
-              let sp = sp - 1 in
-              let (next_trap_sp,sp) = pop_stack(sp) in
-              trap_sp[0] <- next_trap_sp;
-              let sp = sp - 2 in
-              (pc_plus_1,acc,sp)
-          | 91 (* RAISE *) -> if trap_sp[0] = (-1)   (* i.e., uncaught_exception *)
-                              then (143,acc,sp) else 
-                              let sp = trap_sp[0] in
-                              let (next_pc,sp) = pop_stack(sp) in
-                              let (next_trap_sp,sp) = pop_stack(sp) in
-                              let (next_env,sp) = pop_stack(sp) in
-                              let (next_extra_args,sp) = pop_stack(sp) in
-                              trap_sp[0] <- next_trap_sp;
-                              env[0] <- next_env;
-                              extra_args[0] <- long_val(next_extra_args);   (* todo, check long_val everywhere *)
-                              (long_val(next_pc),acc,sp)
-          (* 92 CHECK-SIGNALS *)
-          | 93 (* C-CALL1 *) -> on_argument (fun p -> 
-                                  let sp = push_stack(env[0],sp) in
-                                  let acc = call (p,acc) in
-                                  let (v,sp) = pop_stack(sp) in
-                                  env[0] <- v;
-                                  (pc_plus_2,acc,sp))
-          (* 94 C-CALL2 : unsupported *) 
-          (* 95 C-CALL3 : unsupported *) 
-          (* 96 C-CALL4 : unsupported *) 
-          (* 97 C-CALL5 : unsupported *) 
-          (* 98 C-CALLN : unsupported *) 
-          | 99  (* CONST0 *) -> const_n(pc_plus_1, 0)
-          | 100 (* CONST1 *) -> const_n(pc_plus_1, 1)
-          | 101 (* CONST2 *) -> const_n(pc_plus_1, 2)
-          | 102 (* CONST3 *) -> const_n(pc_plus_1, 3)
-          | 103 (* CONSTINT *) -> on_argument (fun n -> const_n(pc_plus_2, n))
-          | 104 (* PUSHCONST0 *) -> pushconst_n(pc_plus_1, 0)
-          | 105 (* PUSHCONST1 *) -> pushconst_n(pc_plus_1, 1)
-          | 106 (* PUSHCONST2 *) -> pushconst_n(pc_plus_1, 2)
-          | 107 (* PUSHCONST3 *) -> pushconst_n(pc_plus_1, 3)
-          | 108 (* PUSHCONSTINT *) -> on_argument (fun n -> pushconst_n(pc_plus_2, n))
-          | 110 (* ADDINT *) -> binop(addint)
-          | 111 (* SUBINT *) -> binop(subint)
-          | 112 (* MULINT *) -> binop(mulint)
-          | 113 (* DIVINT *) -> binop(divint)
-          | 114 (* MODINT *) -> binop(modint)
-          | 115 (* ANDINT *) -> binop(andint)
-          | 116 (* ORINT *) -> binop(orint)
-          | 117 (* XORINT *) -> binop(xorint)
-          | 118 (* LSLINT *) -> binop(lslint)
-          | 119 (* LSRINT *) -> binop(lsrint)
-          | 120 (* ASRINT *) -> binop(asrint)
-          | 121 (* EQ *) -> binop(eq)
-          | 122 (* NEQ *) -> binop(neq)
-          | 123 (* LTINT *) -> binop(ltint)
-          | 124 (* LEINT *) -> binop(leint)
-          | 125 (* GTINT *) -> binop(gtint)
-          | 126 (* GEINT *) -> binop(geint)
-          | 127 (* OFFSETINT *) -> let f(ofs) = val_long(addint(long_val acc, ofs)) in
-                                   (pc_plus_2, on_argument f, sp) 
-          | 128 (* OFFSETREF *) -> on_argument (fun ofs -> 
-                                     let f0 = get_field(acc,0) in
-                                     set_field(acc,0,val_long((long_val f0) + ofs));
-                                     (pc_plus_2,val_unit,sp))
-          | 129 (* ISINT *) -> (pc_plus_1, val_long (is_int(acc)), sp)
-          (* 130 GETMETHOD *)
-          | 131 (* BEQ *) -> compbranch((==))
-          | 132 (* BNEQ *) -> compbranch((<>))
-          | 133 (* BLTINT *) -> compbranch((<))
-          | 134 (* BLEINT *) -> compbranch((<=))
-          | 135 (* BGTINT *) -> compbranch((>))
-          | 136 (* BGEINT *) -> compbranch((>=))
-          | 137 (* ULTINT *) -> apply_acc_pop(ultint)
-          | 138 (* UGEINT *) -> apply_acc_pop(ugeint)
-          | 139 (* BULTINT *) -> branch_when_apply_acc_code(ultint)
-          | 140 (* BUGEINT *) -> branch_when_apply_acc_code(ugeint)
-          (* 141 GETPUBMET *)
-          (* 142 GETDYNMET *)
-          | 143 (* STOP *) -> print_string "STOP : "; (pc (* code.length*), acc, sp)
           | _ -> print_string "unknown opcode : ";
                  print_int (code[pc]);
-                 print_newline ();
-                 exit()
+                 print_newline (); 
+                 s
           end)
-  in loop (0,0,stack_start) ;;
+        end)
+      end)
+    end
+  in 
+  let exec_step s = let (s2,rdy) = exec step s default s in s2 in
+  reg exec_step last (0,val_unit,stack_start,(val_unit, 0, 0, heap_start),()
+) ;;
 
-let main () = 
-  init_data () ;
-  load_code () ; 
-  let pc = interp () in
-  pc == 0 ;;
+let config1 () = 
+  init_data (); 
+  load_code () ;;
+
+
+let print_cy = false ;;
+
+
+let main (x:bool) =
+  let count c = c + 1 in
+  let c = reg count last 0 in
+  (if print_cy then (print_string "cycle:"; print_int c; print_newline ()) else ());
+
+  let step (init_done,s) =
+    if not(init_done) 
+    then 
+      let ((),rdy) = exec config1 () default () in (rdy,s)
+    else 
+      let s = interp () in
+      let (pc,acc,sp,(env, extra_args, trap_sp, heap_top),errors) = s in
+      (true,pc == 0) 
+  in
+  reg step last (false,false) ;;

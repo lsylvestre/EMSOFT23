@@ -1,20 +1,26 @@
 NS=2000
 
 FLAGS=
-SRC=tests/fun4_env.ml
+SRC=tests/v42.ml
+
+all: byte vm
+	echo "done"
 
 byte:
 	(cd bc ; make SRC=../$(SRC))
 
-vm:	byte
+VM=examples/vm
+
+vm:
 	(cd ../..; ./mixc $(FLAGS) \
-			examples/vm/ram.ml \
-	        examples/vm/mlvalue.ml \
-			examples/vm/debug.ml \
-	        examples/vm/runtime.ml \
-	        examples/vm/prims.ml \
-			examples/vm/bytecode.ml \
-			examples/vm/vm.ml -relax -clk-top=clk48 -top "usr_btn : 1 | rgb_led0_r : 1")
+	        $(VM)/mlvalue.ml \
+	        $(VM)/ram.ml \
+	        $(VM)/runtime.ml \
+	        $(VM)/alloc.ml \
+	        $(VM)/prims.ml \
+			$(VM)/bytecode.ml \
+			$(VM)/debug.ml \
+			$(VM)/vm.ml -relax -clk-top=clk48 -top "usr_btn : 1 | rgb_led0_r : 1, rgb_led0_b : 1")
 
 simul:
 	(cd ../../vhdl; make NS=$(NS))

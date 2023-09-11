@@ -303,8 +303,11 @@ package body runtime is
     variable r : unsigned (0 to length - 1);
     variable n : natural range 0 to length - 1;
     begin
-      n := integer_of_value(arg(length to arg'length - 1));
-      r := unsigned(arg(0 to length-1)) sll n;
+      --
+      -- TODO
+      --
+      --n := integer_of_value(arg(length to arg'length - 1));
+      --r := unsigned(arg(0 to length-1)) sll n;
       return value(r);
     end;
 
@@ -323,7 +326,10 @@ package body runtime is
     variable sign : std_logic;
     begin
       r := unsigned(arg(0 to length-1)) srl n;
-      --sign := arg(0);
+      --
+      -- TODO
+      --
+      -- --sign := arg(0);
       --for i in 0 to arg'length - 1 loop -- not yet tested
       --  if i > n then
       --    r(i) := sign;

@@ -2,8 +2,8 @@ open CustomStdlib ;;
 
 
 
-let rec fact x = 
+let rec sum x = 
   print_int x;
-  if x < 2 then 1 else (x * fact (x-1)) ;;
+  if x < 1 then 0 else (x + sum (x-1)) ;;
 
-print_int (fact 6);;
+print_int (sum 6);;

@@ -12,6 +12,14 @@ To build from source, the pre-requisites are:
 From this directory:
 
 ```
-ghdl -a ../../../runtime.vhdl ../../../main.vhdl ../../top.vhdl 
-yosys -g -m ghdl.so -p "ghdl --latches top; synth_ecp5 -json top.json"
+$ front
+$ synth
+$ pnr
+
+...
+
+Info: Max frequency for clock '$glbnet$clk48$TRELLIS_IO_IN': 48.36 MHz (PASS at 48.00 MHz)
+Info: Program finished normally.
+
+$ clean
 ```

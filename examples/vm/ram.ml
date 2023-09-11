@@ -1,52 +1,42 @@
 
-let static ram = 0^98303 ;;
 
-let static extra_args = 0^1 ;;
+let static ram = (0,true)^16384 ;;
 
-let stack_start = 1000;;
-let heap_start = 2000 ;;
-let heap_size = 3000 ;;
+let stack_start : short = 1000;;
+let heap_start  : short = 2000 ;;
+let heap_size  : short = 3000 ;;
 
-let stack_size () = 
+let stack_size () : short = 
   heap_start - stack_start ;;
 
-let global_start = 0 ;;
+let global_start : short = 0 ;;
 
-let static env = 0^1;;
-let static trap_sp = (-1)^1;;
+let rec ram_get (i) = ram[i] ;;
+let rec ram_set (i,v) = ram[i] <- v ;;
 
-let static heap_top = 2000^1 ;; (* = heap start *) 
-
-
-
-let global_get n =
-  ram[global_start + n] ;;
-
-let global_set (n,v) =
-  ram[global_start + n] <- v ;;
-
-
-
-
-
-let rec exit () = exit () ;; (* infinite loop *)
-
-let rec stack_overflow () =
-  print "stack overflow"; exit () ;;
-
-let push_stack (v,sp) =
-  if (sp - stack_start) >= stack_size () then stack_overflow () else
-  ram[sp] <- v;
-  sp+1 ;;
+let push_stack ((v,sp) : (value * short)) : short =
+  let sp_plus_1 = sp + 1 in
+  ram_set(sp, v); 
+  sp_plus_1 ;;
 
 let pop_stack (sp) =
   (* assert (sp[0] > 0); *)
-  let p = sp-1 in
-  let v = ram[p] in 
+  let p = sp - 1 in
+  let v = ram_get(p) in 
   (v,p) ;;
 
-let push_stack_implace (sp,v) = (* update [stack] *)
-  if (sp - stack_start) >= stack_size () then stack_overflow () else
-  ram[sp] <- v ;;
+let get_field(v,i) =
+  ram_get(ptr_val(v) + i) ;;
 
+let set_field(v,i,w) =
+  ram_set(ptr_val(v) + i,  w) ;;
+
+let get_stack_ofs(sp,i) =
+  ram_get(sp - i - 1);;
+
+let global_get n =
+  ram_get(global_start + n) ;;
+
+let global_set ((n,v) : (short * value)) =
+  ram_set(global_start + n, v) ;;
 

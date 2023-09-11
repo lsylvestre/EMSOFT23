@@ -13,7 +13,7 @@ let rec add_val oc i v =
            let len = Array.length vs+1 in
            let x_num = gensym () in
            Printf.fprintf oc "(* ========= *)\n";
-           Printf.fprintf oc "ram[x%d] <- make_header(%d,%d);\n" x_num tag (len-1);
+           Printf.fprintf oc "ram[x%d] <- val_long(make_header(%d,%d));\n" x_num tag (len-1);
            Printf.fprintf oc "let x%d = x%d+%d in\n" (x_num+1) x_num len;
            Array.iteri (fun j v ->
               let res = add_val oc i v in
@@ -43,7 +43,7 @@ let write_prim oc prim =
   Printf.fprintf oc "let call (n,arg) =\n" ;
   Printf.fprintf oc "  match n with\n";
   Array.iteri (fun i s -> Printf.fprintf oc "  | %d -> %s(arg)\n" i s) prim;
-  Printf.fprintf oc "  | _ -> print_string \"unknown primitive\"; print_int n; exit () end ;;\n\n\n"
+  Printf.fprintf oc "  | _ -> print_string \"unknown primitive\"; val_unit\n  end ;;\n\n\n"
 (* ********************************** *)
 
 let process ~src oc ?(pre=(fun _ _ -> ())) f ?(post=(fun _ -> ())) () =
@@ -68,7 +68,7 @@ let write_code ~version oc code =
   Code.write version oc_tmp code;
   close_out oc_tmp;
   process ~src:tmp_code_path oc
-    ~pre:(fun oc len -> Printf.fprintf oc "let static code = 0^%d ;;\n\nlet load_code () = \n" (len/4))
+    ~pre:(fun oc len -> Printf.fprintf oc "let static code = (0:long)^%d ;;\n\nlet load_code () = \n" (len/4))
     (fun oc i b -> 
         let n = Bytes.get_int16_le b 0 in
         Printf.fprintf oc "  code[%d] <- %d;\n" i n)
@@ -86,7 +86,7 @@ let main () =
   
   let bytefile = Bytefile.read inpath in
 
-  (* Bytefile.print stdout bytefile;*)
+  Bytefile.print stdout bytefile;
 
   let Bytefile.{version;code;data;prim;_} = bytefile in
   

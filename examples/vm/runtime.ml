@@ -62,21 +62,3 @@ let ugeint (n1,n2) =
   else (if n2 < 0 then 1 else geint(n1,n2)) ;;
 
 
-
-
-(* ********** alloc ********** *)
-
-let make_header(tag,sz) =
-  (tag lsl 24) lor (sz lsl 2) ;;
-
-let make_block(tag,sz) =
-  let sz = if sz = 0 then 1 else sz in
-  let a = gc_alloc (sz + 1) in
-  ram[a] <- make_header(tag,sz);
-  val_ptr(a+1) ;;
-
-let make_closure(pc,size) =
-  let res = make_block(closure_tag,size) in
-  set_field(res,0,val_long pc);
-  res ;;
-
