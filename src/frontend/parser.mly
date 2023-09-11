@@ -246,7 +246,7 @@ lexp_desc:
 | FUN p_ty_opt=arg_ty RIGHT_ARROW e=exp
         { let (p,ty_p_opt) = p_ty_opt in
           mk_fun_ty_annot_p p ty_p_opt e }
-| IF e1=exp THEN e2=lexp ELSE e3=exp
+| IF e1=exp THEN e2=lexp ELSE e3=lexp
         { E_if(e1,e2,e3) }
 | LET b=after_let(IN) e2=exp
         { let (p,e1) = b in
