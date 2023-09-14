@@ -12,14 +12,11 @@ To build from source, the pre-requisites are:
 From this directory:
 
 ```
-$ front
-$ synth
-$ pnr
+$ make front
+$ make synth
+$ make pnr
+$ make pack
+$ make dfu
 
-...
-
-Info: Max frequency for clock '$glbnet$clk48$TRELLIS_IO_IN': 48.36 MHz (PASS at 48.00 MHz)
-Info: Program finished normally.
-
-$ clean
+$ make clean
 ```
